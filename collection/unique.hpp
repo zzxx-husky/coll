@@ -7,6 +7,8 @@
 namespace coll {
 template<typename Mapper = typename Identity::type>
 struct UniqueArgs {
+  constexpr static std::string_view name = "unique";
+
   Mapper mapper = Identity::value;
 
   template<typename AnotherMapper>
@@ -23,33 +25,46 @@ template<typename Parent, typename Args>
 struct Unique {
   using InputType = typename Parent::OutputType;
   using OutputType = InputType;
+  using ElemType = typename Args::template ElemType<InputType>;
 
   Parent parent;
   Args args;
 
-  template<typename Ctrl, typename ChildProc>
-  inline void foreach(Ctrl& ctrl, ChildProc proc) {
-    using ElemType = typename Args::template ElemType<InputType>;
-    ElemType pre_elem; // ref or opt
-    parent.foreach(ctrl,
-      [&](InputType elem) {
-        auto&& cur_elem = args.mapper(elem);
-        auto unique = !pre_elem || *pre_elem != cur_elem;
-        pre_elem = cur_elem;
-        if (unique) {
-          proc(std::forward<InputType>(elem));
-        }
-      });
+  template<typename Child>
+  struct Proc : public Child {
+    Args args;
+    ElemType pre_elem;
+
+    template<typename ...X>
+    Proc(const Args& args, X&& ... x):
+      args(args),
+      Child(std::forward<X>(x)...) {
+    }
+
+    inline void process(InputType e) {
+      auto&& cur_elem = args.mapper(e);
+      auto unique = !pre_elem || *pre_elem != cur_elem;
+      pre_elem = cur_elem;
+      if (unique) {
+        Child::process(std::forward<InputType>(e));
+      }
+    }
+  };
+
+  template<typename Child, typename ... X>
+  inline decltype(auto) wrap(X&& ... x) {
+    return parent.template wrap<Proc<Child>, Args&, X...>(args, std::forward<X>(x)...);
   }
 };
 
 inline UniqueArgs<> unique() { return {}; }
 
-template<typename Parent, typename Mapper,
-  std::enable_if_t<traits::is_collection<Parent>::value>* = nullptr>
-inline Unique<Parent, UniqueArgs<Mapper>>
-operator | (const Parent& parent, UniqueArgs<Mapper> args) {
-  return {parent, std::move(args)};
+template<typename Parent, typename Args,
+  std::enable_if_t<Args::name == "unique">* = nullptr,
+  std::enable_if_t<traits::is_coll_operator<Parent>::value>* = nullptr>
+inline Unique<Parent, Args>
+operator | (Parent&& parent, Args&& args) {
+  return {std::forward<Parent>(parent), std::forward<Args>(args)};
 }
 } // namespace coll
 

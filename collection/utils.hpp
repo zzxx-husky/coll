@@ -3,6 +3,9 @@
 #define likely(x)   __builtin_expect((x),1)
 #define unlikely(x) __builtin_expect((x),0)
 
+#define auto_val(x, y) decltype(y)  x = y;
+//#define auto_ref(x, y) decltype((y)) x = y;
+
 namespace coll {
 // a struct storing type information
 template<typename T>

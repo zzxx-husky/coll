@@ -16,7 +16,7 @@ int main() {
   auto size = 1000;
   auto v = coll::range(size)
     | coll::map(anonyr_cc(rand() % size))
-    | coll::to<std::vector>().reserve(size);
+    | coll::to<std::vector>();
 
   auto num_distinct_default = coll::iterate(v)
     | coll::distinct()

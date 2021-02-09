@@ -13,7 +13,7 @@ inline RT deconst(T&& v) {
 }
 namespace traits {
 namespace details {
-template<typename Func, typename ... Args> 
+template<typename Func, typename ... Args>
 auto is_invocable_impl(int) -> decltype (
   std::declval<Func&>()(std::declval<Args&&>() ...),
   std::true_type{}
@@ -41,6 +41,15 @@ auto is_iterable_impl(int) -> decltype(
 
 template<typename T>
 std::false_type is_iterable_impl(...);
+
+template<typename C, typename ... ArgT>
+auto has_process_impl(int) -> decltype(
+  std::declval<C&>().process(std::declval<ArgT>() ...),
+  std::true_type{}
+);
+
+template<typename C, typename ... ArgT>
+std::false_type has_process_impl(...);
 
 template<typename C>
 auto has_reserve_impl(int) -> decltype(
@@ -106,6 +115,12 @@ template<typename T, typename E>
 std::false_type is_builder_impl(...);
 } // namespace details
 
+template<typename T>
+using is_iterator = decltype(details::is_iterator_impl<T>(0));
+
+template<typename T>
+using is_iterable = decltype(details::is_iterable_impl<T>(0));
+
 template<typename Func, typename ... Args>
 struct invocation {
   using result_t = decltype(std::declval<Func&>()(std::declval<Args&&>() ...));
@@ -130,10 +145,16 @@ using remove_cvr_t = typename remove_cvr<T>::type;
 template<typename T>
 using remove_vr_t = typename remove_vr<T>::type;
 
-template<typename C>
+template<typename C, bool enable = true>
 struct iterable {
   using iterator_t = decltype(std::begin(std::declval<C&>()));
   using element_t = decltype(*std::begin(std::declval<C&>()));
+};
+
+template<typename C>
+struct iterable<C, false> {
+  using iterator_t = void;
+  using element_t = void;
 };
 
 template<typename I>
@@ -170,11 +191,8 @@ struct is_c_str : std::integral_constant<
   std::is_same<char *, typename std::decay_t<T>>::value
 > {};
 
-template<typename T>
-using is_iterator = decltype(details::is_iterator_impl<T>(0));
-
-template<typename T>
-using is_iterable = decltype(details::is_iterable_impl<T>(0));
+template<typename C, typename ... ArgT>
+using has_process = decltype(details::has_process_impl<C, ArgT ...>(0));
 
 template<typename C>
 using has_reserve = decltype(details::has_reserve_impl<C>(0));
@@ -196,7 +214,7 @@ using has_emplace = decltype(details::has_emplace_impl<C, E>(0));
 
 template<class T>
 struct is_bounded_array: std::false_type {};
- 
+
 template<class T, size_t N>
 struct is_bounded_array<T[N]> : std::true_type {
   constexpr static size_t size = N;
@@ -204,5 +222,15 @@ struct is_bounded_array<T[N]> : std::true_type {
 
 template<typename T, typename E>
 using is_builder = decltype(details::is_builder_impl<T, E>(0));
+
+template<typename T, typename E, bool enable = true>
+struct builder {
+  using result_t = decltype(std::declval<T&>()(Type<E>{}));
+};
+
+template<typename T, typename E>
+struct builder<T, E, false> {
+  using result_t = void;
+};
 } // namespace traits
-} // namespace coll 
+} // namespace coll

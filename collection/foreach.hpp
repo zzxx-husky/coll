@@ -5,34 +5,51 @@
 namespace coll {
 template<typename P>
 struct ForeachArgs {
+  constexpr static std::string_view name = "foreach";
   P process;
 };
 
-template<typename Parent, typename P>
+template<typename Parent, typename Args>
 struct Foreach {
-  using InputType = typename Parent::OutputType;
+  using InputType = typename traits::remove_cvr_t<Parent>::OutputType;
   using OutputType = InputType;
 
   Parent parent;
-  ForeachArgs<P> args;
+  Args args;
 
-  template<typename Ctrl, typename ChildProc>
-  inline void foreach(Ctrl& ctrl, ChildProc proc) {
-    parent.foreach(ctrl,
-      [&](InputType elem) {
-        args.process(std::forward<InputType>(elem));
-        proc(std::forward<InputType>(elem));
-      });
+  template<typename Child>
+  struct Proc : public Child {
+    Args args;
+
+    template<typename ... X>
+    Proc(const Args& args, X&& ... x):
+      args(args),
+      Child(std::forward<X>(x)...) {
+    }
+
+    inline void process(InputType e) {
+      args.process(e);
+      Child::process(std::forward<InputType>(e));
+    }
+  };
+
+  template<typename Child, typename ... X>
+  inline decltype(auto) wrap(X&& ... x) {
+    return parent.template wrap<Proc<Child>, Args&, X...>(
+      args, std::forward<X>(x)...
+    );
   }
 };
 
 template<typename P>
 ForeachArgs<P> foreach(P process) { return {std::forward<P>(process)}; }
 
-template<typename Parent, typename P,
-  std::enable_if_t<traits::is_collection<Parent>::value>* = nullptr>
-inline Foreach<Parent, P> operator | (const Parent& parent, ForeachArgs<P> args) {
-  return {parent, std::move(args)};
+template<typename Parent, typename Args,
+  std::enable_if_t<Args::name == "foreach">* = nullptr,
+  std::enable_if_t<traits::is_coll_operator<Parent>::value>* = nullptr>
+inline Foreach<Parent, Args>
+operator | (Parent&& parent, Args&& args) {
+  return {std::forward<Parent>(parent), std::forward<Args>(args)};
 }
 } // namespace coll
 

@@ -16,13 +16,14 @@ template<typename KeyBy,
   bool CacheByRef = false,
   bool Adjacenct = false>
 struct GroupBy {
+  constexpr static std::string_view name = "groupby";
+
   KeyBy keyby;
   ValueBy valby = Identity::value;
   Aggregator aggregator;
   AggregateTo aggregate_to = DefaultContainerInserter::value;
 
-  // used by users
-
+  // used by user
   template<typename AnotherAggregator, typename AnotherAggregateTo>
   inline GroupBy<KeyBy, ValueBy, AnotherAggregator, AnotherAggregateTo, CacheByRef, Adjacenct>
   aggregate(AnotherAggregator a, AnotherAggregateTo b) {
@@ -60,7 +61,8 @@ struct GroupBy {
     return aggregate(size_t(0), [](auto& cnt, auto&&) { ++cnt; });
   }
 
-  // below is used by operators
+  // used by operator
+  constexpr static bool is_adjacent = Adjacenct;
 
   template<typename Input>
   using KeyType = traits::remove_cvr_t<typename traits::invocation<KeyBy, traits::remove_vr_t<Input>&>::result_t>;
@@ -80,19 +82,20 @@ struct GroupBy {
     return traits::is_builder<Aggregator, Elem>::value;
   }
 
+  template<typename Input>
+  using AggregatorType = decltype(
+    std::declval<GroupBy<KeyBy, ValueBy, Aggregator, AggregateTo, CacheByRef, Adjacenct>&>()
+      .template get_aggregator<Input>()
+  );
+
   template<typename Input, typename Elem = RefOrVal<Input>>
-  auto get_aggregator() {
+  inline decltype(auto) get_aggregator() {
     if constexpr (traits::is_builder<Aggregator, Elem>::value) {
       return aggregator(Type<Elem>{});
     } else {
       return aggregator;
     }
   }
-
-  template<typename Input>
-  using AggregatorType = decltype(std::declval<
-    GroupBy<KeyBy, ValueBy, Aggregator, AggregateTo, CacheByRef, Adjacenct>&
-  >().template get_aggregator<Input>());
 };
 
 template<typename KeyBy>
@@ -104,13 +107,13 @@ inline auto groupby() {
   return groupby(Identity::value);
 }
 
-template<typename Parent, typename KeyBy, typename ValueBy, typename Aggregator, typename AggregateTo, bool CacheByRef,
-  std::enable_if_t<traits::is_collection<Parent>::value>* = nullptr>
-inline auto operator | (const Parent& parent, GroupBy<KeyBy, ValueBy, Aggregator, AggregateTo, CacheByRef, false> args) {
-  using InputType = typename Parent::OutputType;
-  using KeyType = typename decltype(args)::template KeyType<InputType>;
-  // using ValueType = typename decltype(args)::template ValueType<InputType>;
-  using AggregatorType = typename decltype(args)::template AggregatorType<InputType>;
+template<typename Parent, typename Args,
+  std::enable_if_t<Args::name == "groupby" && !Args::is_adjacent>* = nullptr,
+  std::enable_if_t<traits::is_coll_operator<Parent>::value>* = nullptr>
+inline auto operator | (Parent&& parent, Args&& args) {
+  using InputType = typename traits::remove_cvr_t<Parent>::OutputType;
+  using KeyType = typename Args::template KeyType<InputType>;
+  using AggregatorType = typename Args::template AggregatorType<InputType>;
   if constexpr (args.template is_builder<InputType>()) {
     return parent | aggregate(std::unordered_map<KeyType, AggregatorType>(),
                       [&](auto& map, InputType e) {
@@ -130,10 +133,11 @@ inline auto operator | (const Parent& parent, GroupBy<KeyBy, ValueBy, Aggregator
 }
 
 // Override for adjacenct groupby
-template<typename Parent, typename KeyBy, typename ValueBy, typename Aggregator, typename AggregateTo, bool CacheByRef,
-  std::enable_if_t<traits::is_collection<Parent>::value>* = nullptr>
-inline GroupByAdjacent<Parent, GroupBy<KeyBy, ValueBy, Aggregator, AggregateTo, CacheByRef, true>> 
-operator | (const Parent& parent, GroupBy<KeyBy, ValueBy, Aggregator, AggregateTo, CacheByRef, true> args) {
-  return {parent, std::move(args)};
+template<typename Parent, typename Args,
+  std::enable_if_t<Args::name == "groupby" && Args::is_adjacent>* = nullptr,
+  std::enable_if_t<traits::is_coll_operator<Parent>::value>* = nullptr>
+inline GroupByAdjacent<Parent, Args> 
+operator | (Parent&& parent, Args&& args) {
+  return {std::forward<Parent>(parent), std::forward<Args>(args)};
 }
 } // namespace coll

@@ -34,7 +34,11 @@ template <template<typename ...> class C>
 void run_with_reservation(const std::string& str) {
   auto c = coll::iterate(str)
     | coll::map(anony_cc(char(std::toupper(_))))
-    | coll::to<C>().reserve(str.size());
+    | coll::to([sz = str.size()](auto type) {
+        C<typename decltype(type)::type> c;
+        c.reserve(sz);
+        return c;
+      });
   std::cout << "Results using to<" << str << ">()."
     << " Input elems: " << str.size() << ". Output elems: " << c.size() << '.' << std::endl;
 }

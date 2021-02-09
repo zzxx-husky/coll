@@ -9,6 +9,8 @@ namespace coll {
 
 template<typename O, typename F = NullArg>
 struct PrintArgs {
+  constexpr static std::string_view name = "print";
+
   O& out;
   std::string start;
   std::string delimiter;
@@ -48,27 +50,45 @@ struct Print {
   Parent parent;
   Args args;
 
-  inline void foreach() {
-    auto ctrl = default_control();
-    bool printed = false;
-    parent.foreach(ctrl, 
-      [&](InputType elem) {
-        if (likely(printed)) {
-          args.out << args.delimiter;
-        } else {
-          args.out << args.start;
-          printed = true;
-        }
-        if constexpr (Args::has_formatter) {
-          args.formater(args.out, std::forward<InputType>(elem));
-        } else {
-          args.out << elem;
-        }
-      });
-    if (!printed) {
-      args.out << args.start;
+  struct PrintProc {
+    PrintProc(const Args& args): args(args) {}
+
+    Args args;
+    auto_val(printed, false);
+    auto_val(control, default_control());
+
+    inline void process(InputType e) {
+      if (likely(printed)) {
+        args.out << args.delimiter;
+      } else {
+        args.out << args.start;
+        printed = true;
+      }
+      if constexpr (Args::has_formatter) {
+        args.formater(args.out, std::forward<InputType>(e));
+      } else {
+        args.out << e;
+      }
     }
-    args.out << args.end;
+
+    inline void end() {
+      if (!printed) {
+        args.out << args.start;
+      }
+      args.out << args.end;
+    }
+
+    constexpr static ExecutionType execution_type = RunExecution;
+    template<typename Exec, typename ... ArgT>
+    static void execution(ArgT&& ... args) {
+      auto exec = Exec(std::forward<ArgT>(args)...);
+      exec.process();
+      exec.end();
+    }
+  };
+
+  inline decltype(auto) print() {
+    return parent.template wrap<PrintProc, Args&>(args);
   }
 };
 
@@ -84,9 +104,13 @@ inline PrintArgs<std::ostream> print(const std::string& start, const std::string
   return {std::cout, start, delimiter, end};
 }
 
-template<typename Parent, typename O, typename F,
-  std::enable_if_t<traits::is_collection<Parent>::value>* = nullptr>
-inline void operator | (const Parent& parent, PrintArgs<O, F> args) {
-  Print<Parent, PrintArgs<O, F>>{parent, std::move(args)}.foreach();
+template<typename Parent, typename Args,
+  std::enable_if_t<Args::name == "print">* = nullptr,
+  std::enable_if_t<traits::is_coll_operator<Parent>::value>* = nullptr>
+inline decltype(auto) operator | (Parent&& parent, Args args) {
+  return Print<Parent, Args>{
+    std::forward<Parent>(parent),
+    std::forward<Args>(args)
+  }.print();
 }
 } // namespace coll

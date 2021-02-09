@@ -5,34 +5,51 @@
 namespace coll {
 template<typename F>
 struct FilterArgs {
+  constexpr static std::string_view name = "filter";
   F filter;
 };
 
-template<typename Parent, typename F>
+template<typename Parent, typename Args>
 struct Filter {
-  using InputType = typename Parent::OutputType;
+  using InputType = typename traits::remove_cvr_t<Parent>::OutputType;
   using OutputType = InputType;
 
   Parent parent;
-  FilterArgs<F> args;
+  Args args;
 
-  template<typename Ctrl, typename ChildProc>
-  inline void foreach(Ctrl& ctrl, ChildProc proc) {
-    parent.foreach(ctrl,
-      [=](InputType elem) {
-        if (args.filter(elem)) {
-          proc(std::forward<InputType>(elem));
-        }
-      });
+  template<typename Child>
+  struct Proc : public Child {
+    template<typename ... X>
+    Proc(const Args& args, X&& ... x):
+      args(args),
+      Child(std::forward<X>(x)...) {
+    }
+
+    Args args;
+
+    inline void process(InputType e) {
+      if (args.filter(e)) {
+        Child::process(std::forward<InputType>(e));
+      }
+    }
+  };
+
+  template<typename Child, typename ... X>
+  inline decltype(auto) wrap(X&& ... x) {
+    return parent.template wrap<Proc<Child>, Args&, X...>(
+      args, std::forward<X>(x)...
+    );
   }
 };
 
 template<typename F>
 inline FilterArgs<F> filter(F lambda) { return {lambda}; }
 
-template<typename Parent, typename F,
-  std::enable_if_t<traits::is_collection<Parent>::value>* = nullptr>
-inline Filter<Parent, F> operator | (const Parent& parent, FilterArgs<F> args) {
-  return {parent, std::move(args)};
+template<typename Parent, typename Args,
+  std::enable_if_t<Args::name == "filter">* = nullptr,
+  std::enable_if_t<traits::is_coll_operator<Parent>::value>* = nullptr>
+inline Filter<Parent, Args>
+operator | (Parent&& parent, Args&& args) {
+  return {std::forward<Parent>(parent), std::forward<Args>(args)};
 }
 } // namespace coll

@@ -7,101 +7,169 @@
 #include "utils.hpp"
 
 namespace coll {
-template<bool CacheByRef>
-struct ReverseWithBufferArgs {
-  constexpr static bool reverse_with_buffer = true;
+template<
+  typename BufferBuilder = NullArg,
+  bool CacheByRef = false
+> struct ReverseArgs {
+  constexpr static std::string_view name = "reverse";
+
+  BufferBuilder buffer_builder;
+
+  // used by user
+  template<typename AnotherBufferBuilder>
+  inline ReverseArgs<AnotherBufferBuilder, CacheByRef>
+  with_buffer(AnotherBufferBuilder&& another_builder) {
+    return {std::forward<AnotherBufferBuilder>(another_builder)};
+  }
+
+  template<template<typename ...> class AnotherBufferTemplate>
+  inline auto with_buffer() {
+    return with_buffer([](auto type) {
+      return AnotherBufferTemplate<typename decltype(type)::type>{};
+    });
+  }
+
+  inline auto with_buffer() {
+    return with_buffer<std::vector>();
+  }
+
+  inline ReverseArgs<BufferBuilder, true> cache_by_ref() {
+    return {std::forward<BufferBuilder>(buffer_builder)};
+  }
+
+  // used by operator
+  constexpr static bool reverse_with_buffer = !std::is_same<BufferBuilder, NullArg>::value;
   constexpr static bool is_cache_by_ref = CacheByRef;
 
-  inline ReverseWithBufferArgs<true> cache_by_ref() { return {}; }
-};
+  template<typename Input>
+  using ElemType = std::conditional_t<CacheByRef,
+    Reference<traits::remove_vr_t<Input>>,
+    traits::remove_cvr_t<Input>
+  >;
 
-struct ReverseArgs {
-  constexpr static bool reverse_with_buffer = false;
-  constexpr static bool is_cache_by_ref = false;
+  template<typename Input>
+  using BufferType = decltype(
+    std::declval<ReverseArgs<BufferBuilder, CacheByRef>&>()
+      .template get_buffer<Input>()
+  );
 
-  inline ReverseWithBufferArgs<false> with_buffer() { return {}; }
+  template<typename Input, typename Elem = ElemType<Input>>
+  inline decltype(auto) get_buffer() {
+    if constexpr (std::is_same<BufferBuilder, NullArg>::value) {
+      return std::vector<Elem>{};
+    }
+    if constexpr (traits::is_builder<BufferBuilder, Elem>::value) {
+      return buffer_builder(Type<Elem>{});
+    } else {
+      return buffer_builder;
+    }
+  }
 };
 
 template<typename Parent, typename Args>
 struct Reverse {
   using InputType = typename Parent::OutputType;
-  using OutputType = std::conditional_t<Args::reverse_with_buffer,
-    // since we are using buffer, we should output refernce
-    std::conditional_t<Args::is_cache_by_ref,
-      traits::remove_vr_t<InputType>&,
-      traits::remove_cvr_t<InputType>&
-    >,
-    InputType
-  >;
+  using OutputType =
+    std::conditional_t<!Args::reverse_with_buffer, InputType,
+    std::conditional_t<Args::is_cache_by_ref,      traits::remove_vr_t<InputType>&,
+    traits::remove_cvr_t<InputType>&
+  >>;
       
   Parent parent;
   Args args;
 
-  template<typename Ctrl, typename ChildProc>
-  inline void foreach(Ctrl& ctrl, ChildProc proc) {
-    if constexpr (Args::reverse_with_buffer) {
-      // reverse but with buffer
-      using ElemType = std::conditional_t<Args::is_cache_by_ref,
-        Reference<traits::remove_vr_t<InputType>>,
-        traits::remove_cvr_t<InputType>
-      >;
-      if constexpr (Ctrl::is_reversed) {
-        // by doing so we can output reference to the child
-        // this looks silly but we have to do it in this way because we do not know Ctrl::is_reversed in advance
-        ElemType elem;
-        parent.foreach(ctrl, [&](InputType e) {
-          elem = std::forward<InputType>(e);
-          if constexpr (Args::is_cache_by_ref) {
-            proc(*elem);
-          } else {
-            proc(elem);
-          }
-        });
+  template<typename Child>
+  struct Forward : public Child {
+    Args args;
+    typename Args::template ElemType<InputType> elem;
+
+    template<typename ... X>
+    Forward(const Args& args, X&& ... x):
+      args(args),
+      Child(std::forward<X>(x) ...) {
+    }
+
+    inline void process(InputType e) {
+      elem = std::forward<InputType>(e);
+      if constexpr (Args::is_cache_by_ref) {
+        Child::process(*elem);
       } else {
-        std::vector<ElemType> elems;
-        auto new_ctrl = ctrl;
-        parent.foreach(new_ctrl,
-          [&](InputType elem) {
-            elems.emplace_back(std::forward<InputType>(elem));
-          });
-        for (auto i = std::rbegin(elems), e = std::rend(elems);
-             i != e && !ctrl.break_now; ++i) {
-          if constexpr (Args::is_cache_by_ref) {
-            proc(**i);
-          } else {
-            proc(*i);
-          }
+        Child::process(elem);
+      }
+    }
+  };
+
+  template<typename Child>
+  struct WithBuffer : public Child {
+    Args args;
+    auto_val(buffer,  args.template get_buffer<InputType>());
+    auto_val(control, Child::control.forward());
+
+    template<typename ... X>
+    WithBuffer(const Args& args, X&& ... x):
+      args(args),
+      Child(std::forward<X>(x)...) {
+    }
+
+    inline void process(InputType e) {
+      container_utils::insert(buffer, std::forward<InputType>(e));
+    }
+
+    inline void end() {
+      for (auto i = std::rbegin(buffer), e = std::rend(buffer);
+           i != e && !Child::control.break_now; ++i) {
+        if constexpr (Args::is_cache_by_ref) {
+          Child::process(**i);
+        } else {
+          Child::process(*i);
         }
       }
-    } else {
-      auto new_ctrl = ctrl.reverse();
-      // no matter Ctrl::is_reversed or not, push reverse upwards
-      parent.foreach(new_ctrl,
-        [&](InputType elem) {
-          if (unlikely(ctrl.break_now)) {
-            new_ctrl.break_now = true;
-          } else {
-            proc(std::forward<InputType>(elem));
-          }
-        });
+      Child::end();
     }
+  };
+
+  template<typename Child>
+  struct WithoutBuffer : public Child {
+    Args args;
+    auto_val(control, Child::control.reverse());
+
+    template<typename ... X>
+    WithoutBuffer(const Args& args, X&& ... x):
+      args(args),
+      Child(std::forward<X>(x)...) {
+    }
+
+    inline void process(InputType e) {
+      if (unlikely(Child::control.break_now)) {
+        this->control.break_now = true;
+      } else {
+        Child::process(std::forward<InputType>(e));
+      }
+    }
+  };
+
+  template<typename Child, typename ... X>
+  inline decltype(auto) wrap(X&& ... x) {
+    using Ctrl = traits::control_t<Child>;
+    using ProcessType =
+      std::conditional_t<!Args::reverse_with_buffer, WithoutBuffer<Child>,
+      std::conditional_t<Ctrl::is_reversed,          Forward<Child>,
+      WithBuffer<Child>
+    >>;
+    return parent.template wrap<ProcessType, Args&, X...>(
+      args, std::forward<X>(x)...
+    );
   }
 };
 
-ReverseArgs reverse() { return {}; }
+ReverseArgs<> reverse() { return {}; }
 
-template<typename Parent,
-  std::enable_if_t<traits::is_collection<Parent>::value>* = nullptr>
-inline Reverse<Parent, ReverseArgs>
-operator | (const Parent& parent, ReverseArgs args) {
-  return {parent, std::move(args)};
-}
-
-template<typename Parent, bool CacheByRef,
-  std::enable_if_t<traits::is_collection<Parent>::value>* = nullptr>
-inline Reverse<Parent, ReverseWithBufferArgs<CacheByRef>>
-operator | (const Parent& parent, ReverseWithBufferArgs<CacheByRef> args) {
-  return {parent, std::move(args)};
+template<typename Parent, typename Args,
+  std::enable_if_t<Args::name == "reverse">* = nullptr,
+  std::enable_if_t<traits::is_coll_operator<Parent>::value>* = nullptr>
+inline Reverse<Parent, Args>
+operator | (Parent&& parent, Args&& args) {
+  return {std::forward<Parent>(parent), std::forward<Args>(args)};
 }
 } // namespace coll
 

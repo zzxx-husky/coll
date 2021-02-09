@@ -3,60 +3,93 @@
 #include "base.hpp"
 
 namespace coll {
-template<typename AggregatorVB, typename AggregateTo>
+template<typename AggregatorBuilder, typename AggregateTo>
 struct AggregateArgs {
-  AggregatorVB vb;
+  constexpr static std::string_view name = "aggregate";
+
+  AggregatorBuilder builder;
   // [](auto& aggregator, auto&& value) -> void {
   //   To update aggregator with value;
   // }
   AggregateTo aggregate;
 
+  // used by operator
+  template<typename Input>
+  using AggregatorType = decltype(
+    std::declval<AggregateArgs<AggregatorBuilder, AggregateTo>&>()
+      .template get_aggregator<Input>()
+  );
+
   template<typename Input, typename Elem = traits::remove_cvr_t<Input>>
-  auto get_aggregator() {
-    if constexpr (traits::is_builder<AggregatorVB, Elem>::value) {
-      // Builder
-      return vb(Type<Elem>{});
+  inline decltype(auto) get_aggregator() {
+    if constexpr (traits::is_builder<AggregatorBuilder, Elem>::value) {
+      return builder(Type<Elem>{});
     } else {
-      // Value
-      return vb;
+      return builder;
     }
   }
 };
 
-template<typename Parent>
+template<typename Parent, typename Args>
 struct Aggregate {
-  using InputType = typename Parent::OutputType;
+  using InputType = typename traits::remove_cvr_t<Parent>::OutputType;
+  using AggregatorType = typename Args::template AggregatorType<InputType>;
 
   Parent parent;
+  Args args;
 
-  template<typename Args>
-  inline auto aggregate(Args args) {
-    auto ctrl = default_control();
-    auto aggregator = args.template get_aggregator<InputType>();
-    parent.foreach(ctrl,
-      [&](InputType elem) {
-        args.aggregate(aggregator, std::forward<InputType>(elem));
-      });
-    return aggregator;
+  struct AggregateProc {
+    Args args;
+    AggregatorType aggregator = args.template get_aggregator<InputType>();
+    auto_val(control, default_control());
+
+    AggregateProc(const Args& args): args(args) {}
+
+    inline void process(InputType e) {
+      args.aggregate(aggregator, std::forward<InputType>(e));
+    }
+
+    inline void end() {}
+
+    inline auto result() {
+      return decltype(aggregator)(std::move(aggregator));
+    }
+
+    constexpr static ExecutionType execution_type = RunExecution;
+
+    template<typename Exec, typename ... ArgT>
+    static auto execution(ArgT&& ... args) {
+      auto exec = Exec(std::forward<ArgT>(args)...);
+      exec.process();
+      exec.end();
+      return exec.result();
+    }
+  };
+
+  inline decltype(auto) aggregate() {
+    return parent.template wrap<AggregateProc, Args&>(args);
   }
 };
 
-template<typename AggregatorVB, typename AggregateTo>
-inline AggregateArgs<AggregatorVB, AggregateTo>
-aggregate(AggregatorVB a, AggregateTo b) {
-  return {std::forward<AggregatorVB>(a), std::forward<AggregateTo>(b)};
+template<typename AggregatorBuilder, typename AggregateTo>
+inline AggregateArgs<AggregatorBuilder, AggregateTo>
+aggregate(AggregatorBuilder&& a, AggregateTo&& b) {
+  return {std::forward<AggregatorBuilder>(a), std::forward<AggregateTo>(b)};
 };
 
 template<template <typename ...> class AggregatorT, typename AggregateTo>
-inline auto aggregate(AggregateTo b) {
+inline auto aggregate(AggregateTo&& b) {
   return aggregate([](auto&& type) {
-    return AggregatorT<typename traits::remove_cvr_t<decltype(type)>::type>();
+    return AggregatorT<typename decltype(type)::type>{};
   }, std::forward<AggregateTo>(b));
 }
 
-template<typename Parent, typename Aggregator, typename AggregateTo,
-  std::enable_if_t<traits::is_collection<Parent>::value>* = nullptr>
-inline auto operator | (const Parent& parent, AggregateArgs<Aggregator, AggregateTo> args) {
-  return Aggregate<Parent>{parent}.aggregate(std::move(args));
+template<typename Parent, typename Args,
+  std::enable_if_t<Args::name == "aggregate">* = nullptr,
+  std::enable_if_t<traits::is_coll_operator<Parent>::value>* = nullptr>
+inline decltype(auto) operator | (Parent&& parent, Args&& args) {
+  return Aggregate<Parent, Args>{
+    std::forward<Parent>(parent), std::forward<Args>(args)
+  }.aggregate();
 }
 } // namespace coll

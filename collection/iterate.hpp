@@ -12,17 +12,36 @@ struct IterateByIterator {
 
   Iter left, right;
 
-  template<typename Ctrl, typename ChildProc>
-  inline void foreach(Ctrl& ctrl, ChildProc proc) {
-    if constexpr (Ctrl::is_reversed) {
-      for (auto i = right; i != left && !ctrl.break_now;) {
-        proc(*(--i));
-      }
-    } else {
-      for (auto i = left; i != right && !ctrl.break_now; ++i) {
-        proc(*i);
+  template<typename Child>
+  struct IterateByIteratorProc : public Child {
+    Iter left, right;
+
+    template<typename ...X>
+    IterateByIteratorProc(const Iter& left, const Iter& right, X&& ... x):
+      left(left),
+      right(right),
+      Child(std::forward<X>(x)...) {
+    }
+
+    inline void process() {
+      using Ctrl = traits::control_t<Child>;
+      if constexpr (Ctrl::is_reversed) {
+        for (auto i = right; i != left && !this->control.break_now;) {
+          Child::process(*(--i));
+        }
+      } else {
+        for (auto i = left; i != right && !this->control.break_now; ++i) {
+          Child::process(*i);
+        }
       }
     }
+  };
+
+  template<typename Child, typename ... X>
+  inline decltype(auto) wrap(X&& ... x) {
+    return Child::template execution<IterateByIteratorProc<Child>>(
+      left, right, std::forward<X>(x)...
+    );
   }
 };
 
@@ -33,19 +52,37 @@ struct IterateByIterable {
 
   Iter iterable;
 
-  template<typename Ctrl, typename ChildProc>
-  inline void foreach(Ctrl& ctrl, ChildProc proc) {
-    if constexpr (Ctrl::is_reversed) {
-      for (auto i = std::rbegin(iterable), e = std::rend(iterable);
-           i != e && !ctrl.break_now; ++i) {
-        proc(*i);
-      }
-    } else {
-      for (auto i = std::begin(iterable), e = std::end(iterable);
-           i != e && !ctrl.break_now; ++i) {
-        proc(*i);
+  template<typename Child>
+  struct IterateByIterableProc : public Child {
+    Iter iterable;
+
+    template<typename ... X>
+    IterateByIterableProc(const Iter& iterable, X&& ... x):
+      iterable(iterable),
+      Child(std::forward<X>(x)...) {
+    }
+
+    inline void process() {
+      using Ctrl = traits::control_t<Child>;
+      if constexpr (Ctrl::is_reversed) {
+        for (auto i = std::rbegin(iterable), e = std::rend(iterable);
+             i != e && !this->control.break_now; ++i) {
+          Child::process(*i);
+        }
+      } else {
+        for (auto i = std::begin(iterable), e = std::end(iterable);
+             i != e && !this->control.break_now; ++i) {
+          Child::process(*i);
+        }
       }
     }
+  };
+
+  template<typename Child, typename ... X>
+  inline decltype(auto) wrap(X&& ... x) {
+    return Child::template execution<IterateByIterableProc<Child>>(
+      iterable, std::forward<X>(x)...
+    );
   }
 };
 
@@ -56,14 +93,34 @@ struct Generator {
   IsEmpty is_empty;
   Next next;
 
-  template<typename Ctrl, typename ChildProc>
-  inline void foreach(Ctrl& ctrl, ChildProc proc) {
-    static_assert(!Ctrl::is_reversed, "Generator does not support reverse iteration. "
-      "Consider to use `with_buffer()` for the closest downstream `reverse()` operator.");
+  template<typename Child>
+  struct GeneratorProc : public Child {
+    IsEmpty is_empty;
+    Next next;
 
-    while (!is_empty() && !ctrl.break_now) {
-      proc(next());
+    template<typename ... X>
+    GeneratorProc(const IsEmpty& is_empty, const Next& next, X&& ... x):
+      is_empty(is_empty),
+      next(next),
+      Child(std::forward<X>(x)...) {
     }
+
+    inline void process() {
+      using Ctrl = traits::control_t<Child>;
+      static_assert(!Ctrl::is_reversed, "Generator does not support reverse iteration. "
+        "Consider to use `with_buffer()` for the closest downstream `reverse()` operator.");
+
+      while (!is_empty() && !this->control.break_now) {
+        Child::process(next());
+      }
+    }
+  };
+
+  template<typename Child, typename ... X>
+  inline decltype(auto) wrap(X&& ... x) {
+    return Child::template execution<GeneratorProc<Child>>(
+      is_empty, next, std::forward<X>(x)...
+    );
   }
 
   template<typename AnotherIsEmpty,

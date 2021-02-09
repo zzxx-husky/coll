@@ -9,17 +9,36 @@ struct Range {
 
   I left, right;
 
-  template<typename Ctrl, typename ChildProc>
-  inline void foreach(Ctrl& ctrl, ChildProc proc) {
-    if constexpr (Ctrl::is_reversed) {
-      for (auto i = right; i != left && !ctrl.break_now;) {
-        proc(--i);
-      }
-    } else {
-      for (auto i = left; i != right && !ctrl.break_now; ++i) {
-        proc(i);
+  template<typename Child>
+  struct Proc : public Child {
+    I left, right;
+
+    template<typename ...X>
+    Proc(const I& left, const I& right, X&& ... x):
+      left(left),
+      right(right),
+      Child(std::forward<X>(x)...) {
+    }
+
+    inline void process() {
+      using Ctrl = traits::control_t<Child>;
+      if constexpr (Ctrl::is_reversed) {
+        for (auto i = right; i != left && !this->control.break_now;) {
+          Child::process(--i);
+        }
+      } else {
+        for (auto i = left; i != right && !this->control.break_now; ++i) {
+          Child::process(i);
+        }
       }
     }
+  };
+
+  template<typename Child, typename ... X>
+  inline decltype(auto) wrap(X&& ... x) {
+    return Child::template execution<Proc<Child>>(
+      left, right, std::forward<X>(x)...
+    );
   }
 };
 } // namespace coll

@@ -1,12 +1,8 @@
 #pragma once
 
-#include <unordered_map>
-
 #include "aggregate.hpp"
-#include "container_utils.hpp"
 #include "lambda.hpp"
 #include "reference.hpp"
-#include "topk.hpp"
 #include "utils.hpp"
 
 namespace coll {
@@ -18,11 +14,15 @@ inline auto count() {
 // max, min
 template<typename Comparator, bool Ref>
 struct MinMaxArgs {
+  constexpr static std::string_view name = "minmax";
+
   Comparator comparator;
 
   inline MinMaxArgs<Comparator, true> ref() {
     return {std::forward<Comparator>(comparator)};
   }
+
+  constexpr static bool use_ref = Ref;
 };
 
 template<typename Comparator>
@@ -43,11 +43,12 @@ inline auto min() {
   return min([](auto&& a, auto&& b) { return a < b; });
 }
 
-template<typename Parent, typename Comparator, bool Ref,
-  std::enable_if_t<traits::is_collection<Parent>::value>* = nullptr>
-inline auto operator | (const Parent& parent, MinMaxArgs<Comparator, Ref> args) {
-  using InputType = typename Parent::OutputType;
-  using ResultType = std::conditional_t<Ref,
+template<typename Parent, typename Args,
+  std::enable_if_t<Args::name == "minmax">* = nullptr,
+  std::enable_if_t<traits::is_coll_operator<Parent>::value>* = nullptr>
+inline auto operator | (Parent&& parent, Args&& args) {
+  using InputType = typename traits::remove_cvr_t<Parent>::OutputType;
+  using ResultType = std::conditional_t<Args::use_ref,
     Reference<typename traits::remove_vr_t<InputType>>,
     std::optional<typename traits::remove_cvr_t<InputType>>
   >;
@@ -62,16 +63,18 @@ inline auto operator | (const Parent& parent, MinMaxArgs<Comparator, Ref> args) 
 // sum
 template<typename Add, typename InitVal = NullArg>
 struct SumArgs {
+  constexpr static std::string_view name = "sum";
+
   Add add;
   InitVal init_val;
-
-  constexpr static bool has_init_val =
-    !std::is_same<InitVal, NullArg>::value;
 
   template<typename AnotherInitVal>
   inline SumArgs<Add, AnotherInitVal> init(AnotherInitVal i) {
     return {std::forward<Add>(add), std::forward<AnotherInitVal>(i)};
   }
+
+  constexpr static bool has_init_val =
+    !std::is_same<InitVal, NullArg>::value;
 };
 
 template<typename Add>
@@ -84,20 +87,21 @@ inline auto sum() {
 }
 
 /**
- * empty collection + no init val => nullopt
- * non empty collection + no init val => some(add tail elems to the head elem)
- * empty collection + init val => some(init val)
- * non empty collection + init val => some(add elems to the init val)
+ * empty coll_operator + no init val => nullopt
+ * non empty coll_operator + no init val => some(add tail elems to the head elem)
+ * empty coll_operator + init val => some(init val)
+ * non empty coll_operator + init val => some(add elems to the init val)
  **/
-template<typename Parent, typename Add, typename InitVal,
-  std::enable_if_t<traits::is_collection<Parent>::value>* = nullptr>
-inline auto operator | (const Parent& parent, SumArgs<Add, InitVal> args) {
+template<typename Parent, typename Args,
+  std::enable_if_t<Args::name == "sum">* = nullptr,
+  std::enable_if_t<traits::is_coll_operator<Parent>::value>* = nullptr>
+inline auto operator | (Parent&& parent, Args&& args) {
   if constexpr (args.has_init_val) {
     return std::make_optional(
-      parent | aggregate(std::forward<InitVal>(args.init_val), args.add)
+      parent | aggregate(std::move(args.init_val), args.add)
     );
   } else {
-    using InputType = typename Parent::OutputType;
+    using InputType = typename traits::remove_cvr_t<Parent>::OutputType;
     using ElemType = typename traits::remove_cvr_t<InputType>;
     auto add = [&](auto& opt, auto&& e) {
       if (likely(bool(opt))) {
@@ -113,16 +117,19 @@ inline auto operator | (const Parent& parent, SumArgs<Add, InitVal> args) {
 // avg
 template<typename Add, typename InitVal = NullArg>
 struct AvgArgs {
+  constexpr static std::string_view name = "avg";
+
   Add add;
   InitVal init_val;
-
-  constexpr static bool has_init_val =
-    !std::is_same<InitVal, NullArg>::value;
 
   template<typename AnotherInitVal>
   inline AvgArgs<Add, AnotherInitVal> init(AnotherInitVal i) {
     return {std::forward<Add>(add), std::forward<AnotherInitVal>(i)};
   }
+
+  // used by operator
+  constexpr static bool has_init_val =
+    !std::is_same<InitVal, NullArg>::value;
 };
 
 template<typename Add>
@@ -135,24 +142,25 @@ inline auto avg() {
 }
 
 /**
- * empty collection + no init val => nullopt
- * non empty collection + no init val => some(add tail elems to the head elem)
- * empty collection + init val => some(init val)
- * non empty collection + init val => some(add elems to the init val)
+ * empty coll_operator + no init val => nullopt
+ * non empty coll_operator + no init val => some(add tail elems to the head elem)
+ * empty coll_operator + init val => some(init val)
+ * non empty coll_operator + init val => some(add elems to the init val)
  **/
-template<typename Parent, typename Add, typename InitVal,
-  std::enable_if_t<traits::is_collection<Parent>::value>* = nullptr>
-inline auto operator | (const Parent& parent, AvgArgs<Add, InitVal> args) {
+template<typename Parent, typename Args,
+  std::enable_if_t<Args::name == "avg">* = nullptr,
+  std::enable_if_t<traits::is_coll_operator<Parent>::value>* = nullptr>
+inline auto operator | (Parent&& parent, Args&& args) {
   if constexpr (args.has_init_val) {
     size_t count = 0;
     auto add = [&](auto&& a, auto&& v) {
       args.add(std::forward<decltype(a)>(a), std::forward<decltype(v)>(v));
       ++count;
     };
-    auto agg = parent | aggregate(std::forward<InitVal>(args.init_val), add);
+    auto agg = parent | aggregate(std::move(args.init_val), add);
     return std::make_optional(agg /= count);
   } else {
-    using InputType = typename Parent::OutputType;
+    using InputType = typename traits::remove_cvr_t<Parent>::OutputType;
     using ElemType = typename traits::remove_cvr_t<InputType>;
     size_t count = 0;
     auto add = [&](auto& opt, auto&& e) {
