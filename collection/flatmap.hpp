@@ -22,7 +22,7 @@ struct Flatmap {
   using MapperResultType = typename Args::template MapperResultType<InputType>;
   constexpr static bool IsIterable = traits::is_iterable<MapperResultType>::value;
   constexpr static bool IsCStr = traits::is_c_str<MapperResultType>::value;
-  constexpr static bool IsCollOperator = traits::is_coll_operator<MapperResultType>::value;
+  constexpr static bool IsCollOperator = traits::is_pipe_operator<MapperResultType>::value;
 
   template<bool, typename T> struct CStrOutputType {
     using type = decltype(*std::declval<T>());
@@ -116,7 +116,7 @@ inline auto flatten() {
 
 template<typename Parent, typename Args,
   std::enable_if_t<Args::name == "flatmap">* = nullptr,
-  std::enable_if_t<traits::is_coll_operator<Parent>::value>* = nullptr>
+  std::enable_if_t<traits::is_pipe_operator<Parent>::value>* = nullptr>
 inline Flatmap<Parent, Args>
 operator | (Parent&& parent, Args&& args) {
   static_assert(!std::is_same<typename Flatmap<Parent, Args>::OutputType, NullArg>::value,

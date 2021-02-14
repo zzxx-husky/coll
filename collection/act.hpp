@@ -44,7 +44,7 @@ struct ActProc {
 
 template<typename Parent, typename Args,
   std::enable_if_t<Args::name == "act">* = nullptr,
-  std::enable_if_t<traits::is_coll_operator<Parent>::value>* = nullptr>
+  std::enable_if_t<traits::is_pipe_operator<Parent>::value>* = nullptr>
 inline decltype(auto) operator | (Parent&& parent, Args&& args) {
   using Input = typename traits::remove_cvr_t<Parent>::OutputType;
   return parent.template wrap<ActProc<Args, Input>, Args&>(args);

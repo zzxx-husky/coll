@@ -102,7 +102,7 @@ inline BranchArgs<PipelineCtor> branch(PipelineCtor ctor) {
 
 template<typename Parent, typename Args,
   std::enable_if_t<Args::name == "branch">* = nullptr,
-  std::enable_if_t<traits::is_coll_operator<Parent>::value>* = nullptr>
+  std::enable_if_t<traits::is_pipe_operator<Parent>::value>* = nullptr>
 inline Branch<Parent, Args>
 operator | (Parent&& parent, Args&& args) {
   return {std::forward<Parent>(parent), std::forward<Args>(args)};

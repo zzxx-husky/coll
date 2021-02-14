@@ -128,6 +128,18 @@ public:
     num_elems -= std::min(num_elems, cur_steps);
     return num_elems != 0;
   }
+
+  friend std::ostream& operator<<(std::ostream& out, const WindowedElements<I, CacheByRef>& w) {
+    auto i = w.begin(), e = w.end();
+    if (i != e) {
+      out << '[' << *i;
+      for (++i; i != e; ++i) {
+        out << ", " << *i;
+      }
+      out << ']';
+    }
+    return out;
+  }
 };
 
 } // namespace coll

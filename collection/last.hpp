@@ -55,7 +55,7 @@ inline LastArgs<false> last() { return {}; }
 
 template<typename Parent, typename Args,
   std::enable_if_t<Args::name == "last">* = nullptr,
-  std::enable_if_t<traits::is_coll_operator<Parent>::value>* = nullptr>
+  std::enable_if_t<traits::is_pipe_operator<Parent>::value>* = nullptr>
 inline decltype(auto) operator | (Parent&& parent, Args&& args) {
   return Last<Parent, Args>{std::forward<Parent>(parent), std::forward<Args>(args)}.last();
 }

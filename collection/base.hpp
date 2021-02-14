@@ -78,41 +78,23 @@ struct CollProcessLike {
 namespace traits {
 namespace details {
 template<typename T, typename RT = traits::remove_cvr_t<T>>
-auto is_coll_operator(int) -> decltype(
+auto is_pipe_operator(int) -> decltype(
   std::declval<traits::remove_cvr_t<typename RT::OutputType>>(),
   std::declval<RT&>().template wrap<CollProcessLike<typename RT::OutputType>>(),
   std::true_type{}
 );
 
 template<typename T>
-std::false_type is_coll_operator(...);
+std::false_type is_pipe_operator(...);
 
 template<typename T>
-auto has_control(int) -> decltype(
-  std::declval<T&>().control,
+auto has_func_result(int) -> decltype(
+  std::declval<T&>().result(),
   std::true_type{}
 );
 
 template<typename T>
-std::false_type has_control(...);
-
-template<typename T>
-auto has_end(int) -> decltype(
-  std::declval<T&>().end(),
-  std::true_type{}
-);
-
-template<typename T>
-std::false_type has_end(...);
-
-template<typename T>
-auto has_child(int) -> decltype(
-  std::declval<T>().child,
-  std::true_type{}
-);
-
-template<typename T>
-std::false_type has_child(...);
+std::false_type has_func_result(...);
 
 template<typename T>
 struct parent_operator {
@@ -123,35 +105,38 @@ template<template<typename, typename...> class Child, typename Parent, typename 
 struct parent_operator<Child<Parent, Args ...>> {
   using type = Parent;
 };
-
-template<typename T, bool exist>
-struct control {
-  using type = traits::remove_cvr_t<decltype(std::declval<T&>().control)>;
-};
-
-template<typename T>
-struct control<T, false> {
-  using C = decltype(std::declval<T&>().child);
-  using type = typename control<C, decltype(has_control<C>(0))::value>::type;
-};
 } // namespace details
 
 template<typename T>
-using is_coll_operator = decltype(details::is_coll_operator<T>(0));
+using is_pipe_operator = decltype(details::is_pipe_operator<T>(0));
 
 template<typename T>
 using parent_operator_t = typename details::parent_operator<T>::type;
 
 template<typename T>
-using has_control = decltype(details::has_control<T>(0));
+using control_t = typename traits::remove_cvr_t<decltype(std::declval<T&>().control)>;
 
 template<typename T>
-using has_child = decltype(details::has_child<T>(0));
+using has_func_result = decltype(details::has_func_result<T>(0));
+
+template<typename T, bool enable = true>
+struct output_type {
+  using type = typename T::OutputType;
+};
 
 template<typename T>
-using has_end = decltype(details::has_end<T>(0));
+struct output_type<T, false> {
+  using type = void;
+};
+
+template<typename T, bool enable = true>
+struct result_type {
+  using type = decltype(std::declval<T&>().result());
+};
 
 template<typename T>
-using control_t = typename details::control<T, has_control<T>::value>::type;
+struct result_type<T, false> {
+  using type = void;
+};
 } // namespace traits
 } // namespace coll

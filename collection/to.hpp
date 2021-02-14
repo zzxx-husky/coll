@@ -113,7 +113,7 @@ struct To {
 
 template<typename Parent, typename Args,
   std::enable_if_t<Args::name == "to">* = nullptr,
-  std::enable_if_t<traits::is_coll_operator<Parent>::value>* = nullptr>
+  std::enable_if_t<traits::is_pipe_operator<Parent>::value>* = nullptr>
 inline decltype(auto)
 operator | (Parent&& parent, Args&& args) {
   return To<Parent, Args>{std::forward<Parent>(parent), std::forward<Args>(args)}.to();

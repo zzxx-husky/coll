@@ -109,7 +109,7 @@ inline auto groupby() {
 
 template<typename Parent, typename Args,
   std::enable_if_t<Args::name == "groupby" && !Args::is_adjacent>* = nullptr,
-  std::enable_if_t<traits::is_coll_operator<Parent>::value>* = nullptr>
+  std::enable_if_t<traits::is_pipe_operator<Parent>::value>* = nullptr>
 inline auto operator | (Parent&& parent, Args&& args) {
   using InputType = typename traits::remove_cvr_t<Parent>::OutputType;
   using KeyType = typename Args::template KeyType<InputType>;
@@ -135,7 +135,7 @@ inline auto operator | (Parent&& parent, Args&& args) {
 // Override for adjacenct groupby
 template<typename Parent, typename Args,
   std::enable_if_t<Args::name == "groupby" && Args::is_adjacent>* = nullptr,
-  std::enable_if_t<traits::is_coll_operator<Parent>::value>* = nullptr>
+  std::enable_if_t<traits::is_pipe_operator<Parent>::value>* = nullptr>
 inline GroupByAdjacent<Parent, Args> 
 operator | (Parent&& parent, Args&& args) {
   return {std::forward<Parent>(parent), std::forward<Args>(args)};

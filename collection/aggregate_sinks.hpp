@@ -45,7 +45,7 @@ inline auto min() {
 
 template<typename Parent, typename Args,
   std::enable_if_t<Args::name == "minmax">* = nullptr,
-  std::enable_if_t<traits::is_coll_operator<Parent>::value>* = nullptr>
+  std::enable_if_t<traits::is_pipe_operator<Parent>::value>* = nullptr>
 inline auto operator | (Parent&& parent, Args&& args) {
   using InputType = typename traits::remove_cvr_t<Parent>::OutputType;
   using ResultType = std::conditional_t<Args::use_ref,
@@ -94,7 +94,7 @@ inline auto sum() {
  **/
 template<typename Parent, typename Args,
   std::enable_if_t<Args::name == "sum">* = nullptr,
-  std::enable_if_t<traits::is_coll_operator<Parent>::value>* = nullptr>
+  std::enable_if_t<traits::is_pipe_operator<Parent>::value>* = nullptr>
 inline auto operator | (Parent&& parent, Args&& args) {
   if constexpr (args.has_init_val) {
     return std::make_optional(
@@ -149,7 +149,7 @@ inline auto avg() {
  **/
 template<typename Parent, typename Args,
   std::enable_if_t<Args::name == "avg">* = nullptr,
-  std::enable_if_t<traits::is_coll_operator<Parent>::value>* = nullptr>
+  std::enable_if_t<traits::is_pipe_operator<Parent>::value>* = nullptr>
 inline auto operator | (Parent&& parent, Args&& args) {
   if constexpr (args.has_init_val) {
     size_t count = 0;

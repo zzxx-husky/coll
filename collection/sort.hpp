@@ -180,7 +180,7 @@ inline SortArgs<> sort() { return {}; }
 template<typename Operator, typename Args,
   typename Parent = traits::remove_cvr_t<Operator>,
   std::enable_if_t<Args::name == "sort">* = nullptr,
-  std::enable_if_t<traits::is_coll_operator<Parent>::value>* = nullptr>
+  std::enable_if_t<traits::is_pipe_operator<Parent>::value>* = nullptr>
 inline Sort<Parent, Args>
 operator | (Operator&& parent, Args&& args) {
   return {std::forward<Operator>(parent), std::forward<Args>(args)};

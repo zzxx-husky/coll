@@ -20,6 +20,7 @@
 #include "groupby.hpp"
 #include "init_tail.hpp"
 #include "map.hpp"
+#include "partition.hpp"
 #include "reverse.hpp"
 #include "sort.hpp"
 #include "split.hpp"

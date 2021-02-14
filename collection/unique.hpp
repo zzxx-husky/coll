@@ -61,7 +61,7 @@ inline UniqueArgs<> unique() { return {}; }
 
 template<typename Parent, typename Args,
   std::enable_if_t<Args::name == "unique">* = nullptr,
-  std::enable_if_t<traits::is_coll_operator<Parent>::value>* = nullptr>
+  std::enable_if_t<traits::is_pipe_operator<Parent>::value>* = nullptr>
 inline Unique<Parent, Args>
 operator | (Parent&& parent, Args&& args) {
   return {std::forward<Parent>(parent), std::forward<Args>(args)};

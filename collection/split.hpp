@@ -111,7 +111,7 @@ inline auto split(Condition condition) {
 
 template<typename Parent, typename Args,
   std::enable_if_t<Args::name == "split">* = nullptr,
-  std::enable_if_t<traits::is_coll_operator<Parent>::value>* = nullptr>
+  std::enable_if_t<traits::is_pipe_operator<Parent>::value>* = nullptr>
 inline Split<Parent, Args>
 operator | (Parent&& parent, Args&& args) {
   return {std::forward<Parent>(parent), std::forward<Args>(args)};
