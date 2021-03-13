@@ -43,6 +43,18 @@ struct PrintArgs {
   }
 };
 
+inline PrintArgs<std::ostream> println() {
+  return {std::cout, "", "\n", "\n"};
+}
+
+inline PrintArgs<std::ostream> print(const std::string& delimiter = ", ") {
+  return {std::cout, "[", delimiter, "]\n"};
+}
+
+inline PrintArgs<std::ostream> print(const std::string& start, const std::string& delimiter, const std::string& end) {
+  return {std::cout, start, delimiter, end};
+}
+
 template<typename Parent, typename Args>
 struct Print {
   using InputType = typename Parent::OutputType;
@@ -50,8 +62,8 @@ struct Print {
   Parent parent;
   Args args;
 
-  struct PrintProc {
-    PrintProc(const Args& args): args(args) {}
+  struct Execution : public ExecutionBase {
+    Execution(const Args& args): args(args) {}
 
     Args args;
     auto_val(printed, false);
@@ -78,39 +90,28 @@ struct Print {
       args.out << args.end;
     }
 
-    constexpr static ExecutionType execution_type = RunExecution;
+    constexpr static ExecutionType execution_type = Run;
+
     template<typename Exec, typename ... ArgT>
-    static void execution(ArgT&& ... args) {
+    static void execute(ArgT&& ... args) {
       auto exec = Exec(std::forward<ArgT>(args)...);
       exec.process();
       exec.end();
     }
   };
 
-  inline decltype(auto) print() {
-    return parent.template wrap<PrintProc, Args&>(args);
+  inline decltype(auto) execute() {
+    return parent.template wrap<Execution, Args&>(args);
   }
 };
-
-inline PrintArgs<std::ostream> println() {
-  return {std::cout, "", "\n", "\n"};
-}
-
-inline PrintArgs<std::ostream> print(const std::string& delimiter = ", ") {
-  return {std::cout, "[", delimiter, "]\n"};
-}
-
-inline PrintArgs<std::ostream> print(const std::string& start, const std::string& delimiter, const std::string& end) {
-  return {std::cout, start, delimiter, end};
-}
 
 template<typename Parent, typename Args,
   std::enable_if_t<Args::name == "print">* = nullptr,
   std::enable_if_t<traits::is_pipe_operator<Parent>::value>* = nullptr>
 inline decltype(auto) operator | (Parent&& parent, Args args) {
-  return Print<Parent, Args>{
+  return Print<traits::remove_cvr_t<Parent>, Args>{
     std::forward<Parent>(parent),
     std::forward<Args>(args)
-  }.print();
+  }.execute();
 }
 } // namespace coll

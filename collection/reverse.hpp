@@ -66,38 +66,19 @@ template<
   }
 };
 
+ReverseArgs<> reverse() { return {}; }
+
 template<typename Parent, typename Args>
 struct Reverse {
   using InputType = typename Parent::OutputType;
   using OutputType =
     std::conditional_t<!Args::reverse_with_buffer, InputType,
     std::conditional_t<Args::is_cache_by_ref,      traits::remove_vr_t<InputType>&,
-    traits::remove_cvr_t<InputType>&
+                                                   traits::remove_cvr_t<InputType>&
   >>;
       
   Parent parent;
   Args args;
-
-  template<typename Child>
-  struct Forward : public Child {
-    Args args;
-    typename Args::template ElemType<InputType> elem;
-
-    template<typename ... X>
-    Forward(const Args& args, X&& ... x):
-      args(args),
-      Child(std::forward<X>(x) ...) {
-    }
-
-    inline void process(InputType e) {
-      elem = std::forward<InputType>(e);
-      if constexpr (Args::is_cache_by_ref) {
-        Child::process(*elem);
-      } else {
-        Child::process(elem);
-      }
-    }
-  };
 
   template<typename Child>
   struct WithBuffer : public Child {
@@ -130,39 +111,36 @@ struct Reverse {
 
   template<typename Child>
   struct WithoutBuffer : public Child {
-    Args args;
+    using Child::Child;
     auto_val(control, Child::control.reverse());
 
-    template<typename ... X>
-    WithoutBuffer(const Args& args, X&& ... x):
-      args(args),
-      Child(std::forward<X>(x)...) {
-    }
-
     inline void process(InputType e) {
+      Child::process(std::forward<InputType>(e));
       if (unlikely(Child::control.break_now)) {
         this->control.break_now = true;
-      } else {
-        Child::process(std::forward<InputType>(e));
       }
     }
   };
 
   template<typename Child, typename ... X>
   inline decltype(auto) wrap(X&& ... x) {
-    using Ctrl = traits::control_t<Child>;
+    using Ctrl = traits::operator_control_t<Child>;
     using ProcessType =
       std::conditional_t<!Args::reverse_with_buffer, WithoutBuffer<Child>,
-      std::conditional_t<Ctrl::is_reversed,          Forward<Child>,
-      WithBuffer<Child>
+      std::conditional_t<Ctrl::is_reversed,          Child,
+                                                     WithBuffer<Child>
     >>;
-    return parent.template wrap<ProcessType, Args&, X...>(
-      args, std::forward<X>(x)...
-    );
+    if constexpr (!Args::reverse_with_buffer || Ctrl::is_reversed) {
+      return parent.template wrap<ProcessType, X...>(
+        std::forward<X>(x)...
+      );
+    } else {
+      return parent.template wrap<ProcessType, Args&, X...>(
+        args, std::forward<X>(x)...
+      );
+    }
   }
 };
-
-ReverseArgs<> reverse() { return {}; }
 
 template<typename Parent, typename Args,
   std::enable_if_t<Args::name == "reverse">* = nullptr,

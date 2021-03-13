@@ -3,7 +3,7 @@
 #include "base.hpp"
 #include "traits.hpp"
 
-#include "act.hpp"
+#include "foreach.hpp"
 
 namespace coll {
 template<typename M>
@@ -15,6 +15,15 @@ struct FlatmapArgs {
   template<typename Input>
   using MapperResultType = typename traits::invocation<M, Input>::result_t;
 };
+
+template<typename M>
+inline FlatmapArgs<M> flatmap(M mapper) { return {std::forward<M>(mapper)}; }
+
+inline auto flatten() {
+  return flatmap([](auto&& e) -> decltype(auto) {
+    return std::forward<decltype(e)>(e);
+  });
+}
 
 template<typename Parent, typename Args>
 struct Flatmap {
@@ -47,17 +56,17 @@ struct Flatmap {
   Args args;
 
   template<typename Child>
-  struct FlatmapProc : public Child {
+  struct Execution : public Child {
     Args args;
 
     template<typename ...X>
-    FlatmapProc(const Args& args, X&& ... x):
+    Execution(const Args& args, X&& ... x):
       args(args),
       Child(std::forward<X>(x)...) {
     }
 
     inline void process(InputType e) {
-      using Ctrl = traits::control_t<Child>;
+      using Ctrl = traits::operator_control_t<Child>;
       if constexpr (IsIterable) {
         auto&& iterable = args.mapper(std::forward<InputType>(e));
         if constexpr (Ctrl::is_reversed) {
@@ -90,7 +99,7 @@ struct Flatmap {
         }
       } else /* if constexpr (IsCollOperator) */ {
         args.mapper(std::forward<InputType>(e))
-          | act([&](auto&& e) {
+          | foreach([&](auto&& e) {
               Child::process(std::forward<decltype(e)>(e));
             });
       }
@@ -99,20 +108,11 @@ struct Flatmap {
 
   template<typename Child, typename ... X>
   inline decltype(auto) wrap(X&& ... x) {
-    return parent.template wrap<FlatmapProc<Child>, Args&, X...>(
+    return parent.template wrap<Execution<Child>, Args&, X...>(
       args, std::forward<X>(x)...
     );
   }
 };
-
-template<typename M>
-inline FlatmapArgs<M> flatmap(M mapper) { return {std::forward<M>(mapper)}; }
-
-inline auto flatten() {
-  return flatmap([](auto&& e) -> auto&& {
-    return std::forward<decltype(e)>(e);
-  });
-}
 
 template<typename Parent, typename Args,
   std::enable_if_t<Args::name == "flatmap">* = nullptr,

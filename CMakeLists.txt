@@ -2,7 +2,6 @@ cmake_minimum_required(VERSION 3.5)
 project(cpp-collection)
 
 set(CMAKE_CXX_STANDARD 17)
-#set(ExtLibs pthread rt)
 
 include_directories(.)
 
@@ -23,3 +22,8 @@ add(TopkFreqWords examples/topk_freq_words.cpp)
 add(Calendar examples/calendar.cpp)
 add(Branch examples/branch.cpp)
 add(Partition examples/partition.cpp)
+add(LambdaGenerator examples/lambda_generator.cpp)
+
+set(ExtLibs pthread rt)
+add(Parallel examples/parallel.cpp)
+add(ParallelSort examples/parallel_sort.cpp)

@@ -14,7 +14,7 @@ int main() {
             });
       })
       .by(anony_cc(_ % 4))
-    | coll::foreach([](auto k) {
+    | coll::inspect([](auto k) {
         std::cout << "Key " << k << " ends." << std::endl;
       })
     | coll::act();
@@ -24,7 +24,7 @@ int main() {
         return in | coll::sum();
       })
       .by(anony_cc(_ % 4))
-    | coll::foreach([](auto&& k2s) {
+    | coll::inspect([](auto&& k2s) {
         std::cout << "Key " << k2s.first << " ends with sum " << *k2s.second << std::endl;
       })
     | coll::act();

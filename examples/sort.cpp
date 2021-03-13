@@ -79,7 +79,7 @@ int main() {
   std::cout << "Reverse Sort by ref." << std::endl;
   ScapegoatCounter::clear();
   coll::iterate(vals)
-    | coll::foreach([&](auto& e) {
+    | coll::inspect([&](auto& e) {
         queue.push(e.val);
       })
     | coll::sort()

@@ -24,7 +24,7 @@ struct Last {
   Parent parent;
   Args args;
 
-  struct LastProc {
+  struct Execution : public ExecutionBase {
     ResultType res;
     auto_val(control, default_control());
 
@@ -36,9 +36,10 @@ struct Last {
 
     inline auto& result() { return res; }
 
-    constexpr static ExecutionType execution_type = RunExecution;
+    constexpr static ExecutionType execution_type = Run;
+
     template<typename Exec, typename ... ArgT>
-    static auto execution(ArgT&& ... args) {
+    static auto execute(ArgT&& ... args) {
       auto exec = Exec(std::forward<ArgT>(args)...);
       exec.process();
       exec.end();
@@ -47,7 +48,7 @@ struct Last {
   };
 
   inline decltype(auto) last() {
-    return parent.template wrap<LastProc>();
+    return parent.template wrap<Execution>();
   }
 };
 

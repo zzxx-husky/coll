@@ -3,84 +3,114 @@
 #include <functional>
 #include <string_view>
 
+#include "control.hpp"
+
 namespace coll {
-template<bool Reverse>
-struct Control {
-  using ReverseType = Control<!Reverse>;
-  using ForwardType = Control<false>;
-
-  // used by child operator to notify parent to break iteration
-  bool break_now = false;
-  // whether to reversely iterate the elements
-  constexpr static bool is_reversed = Reverse;
-
-  // reverse the iteration order based on the current order.
-  inline Control<!Reverse> reverse() {
-    return {break_now};
-  }
-
-  // make the iteration order to be forward
-  inline Control<false> forward() {
-    return {break_now};
-  }
-};
-
-inline Control<false> default_control() { return {}; }
-
-using DefaultControl = decltype(default_control());
 
 struct NullArg {};
 
+struct ExecutionBase {};
+
 enum ExecutionType {
-  // ConstructExecution of child will be inherited by RunExecution of the parent
-  ConstructExecution,
-  // RunExecution of child will be overrided by RunExecution of the parent
-  // RunExecution of child will be inherited by ConstructExecution of the parent
-  RunExecution
+  /**
+   * Construct means only to construct the execution object.
+   * The execution object will be outputed.
+   *
+   * A Construct execution in a child operator CANNOT be overrided by a Run execution in the parent operator.
+   * A Construct execution in a child operator can be inherited by a Construct execution in the parent operator.
+   **/
+  Construct,
+  /**
+   * Run means that the constructed execution will be `process`ed and then `end`ed.
+   * Result of the execution will be outputed, if any.
+   *
+   * A Run execution in a child operator can be overrided by a Run execution in the parent operator.
+   * A Run execution in a child operator can be inherited by a Construct execution in the parent operator.
+   **/
+  Run
 };
 
-struct Left {
-private:
-  Left() = default;
-public:
-  const static Left value;
-};
+/**
+ * This is only a template to describe what an Executon is like.
+ * Used only for traits.
+ *
+ * Input: the type of input elements of the execution
+ *
+ * If this is not a source execution, i.e., it has a parent, the Execution class will be a base class of the parent Execution class.
+ * If this is not a sink execution, i.e., it has a child, the Execution class should have a base class which is the child Execution class.
+ * If this is a sink execution, it should inherit ExecutionBase.
+ **/
+template<typename Input>
+struct ExecutionLike : public ExecutionBase /* or public ChildExecutionLike */ {
+  /**
+   * Constructor.
+   * The constructor usually takes a list of arguments by a template list, i.e., template<typename ... ArgT>
+   * The constructor takes the necessary arguments from the head of the argument list to initialize itself,
+   * then pass the rest arguments to the construtor of the child Execution class, e.g.,
+   *
+   * template<A, B, ... ArgT>
+   * ExecutionLike(a, b, ... args):
+   *   member_a(a), member_b(b),
+   *   Child(std::forward(args) ...) {
+   * }
+   **/
+  ExecutionLike() = default;
 
-struct Right {
-private:
-  Right() = default;
-public:
-  const static Right value;
-};
-
-template<typename ParentInput>
-struct CollProcessLike {
-  // This is only a template and used only by traits
-  CollProcessLike() = default;
-  // 1. [Optional] Operator specific arguments
+  /**
+   * The arguments of the operator. Optional. However, it should be necessary for most cases.
+   **/
   NullArg args;
-  // 2. [Optional] Operator specific states
+
+  /**
+   * The states of the operator. Optional.
+   **/
   NullArg states;
-  // 3. [Optional] A new control name `control`, or inherit from Child class
+
+  /**
+   * An important member named `control` that is an `Control<>` object.
+   * A sink execution must declare a `control` member.
+   * A non-sink execution may inherit the `control` member from child Execution class, or declare a new and independent one.
+   **/
   DefaultControl control = default_control();
-  // 4. [Required] A `process` function to process inputs from parent.
-  inline void process(ParentInput) {}
-  // 5. [Optional] An `end` function that will be called after
-  //    all the inputs from parent are processed
+
+  /**
+   * To process each input element. Required. We can pass elements to child by Child::process.
+   **/
+  inline void process(Input) {}
+
+  /**
+   * Actions to take after the last input element has been `process`ed.
+   * We can call the child to `end` by Child::end.
+   **/
   inline void end() {}
-  // 6. [Conditional] ExecutionType
-  constexpr static ExecutionType execution_type = RunExecution;
-  // 7. [Conditional] Execution function
+
+  /**
+   * A sink execution must declare a `result` function which is used to obtain the processing result.
+   * The return value can be void if the sink execution has no result to return.
+   **/
+  inline void result() {}
+
+  /**
+   * A sink execution must declare `execution_type` and `execute`.
+   * A non-sink execution may inherit them from child Execution class, or declare new and independent ones.
+   *
+   * Exec is the final class that contains the logics of the Execution classes of all the operators in the pipeline
+   * args are the arguments to initialize all the Execution classes, ordered from the source execution to the sink execution
+   **/
+  constexpr static ExecutionType execution_type = Run;
+
   template<typename Exec, typename ... ArgT>
-  static decltype(auto) execution(ArgT&& ... args) {}
+  static decltype(auto) execute(ArgT&& ... args) {}
 };
 
 namespace traits {
 namespace details {
 template<typename T, typename RT = traits::remove_cvr_t<T>>
 auto is_pipe_operator(int) -> decltype(
+  // has declared type OutputType
   std::declval<traits::remove_cvr_t<typename RT::OutputType>>(),
-  std::declval<RT&>().template wrap<CollProcessLike<typename RT::OutputType>>(),
+  // has a member function `wrap` that accepts an Execution class
+  std::declval<RT&>().template wrap<ExecutionLike<typename RT::OutputType>>(),
   std::true_type{}
 );
 
@@ -88,54 +118,57 @@ template<typename T>
 std::false_type is_pipe_operator(...);
 
 template<typename T>
-auto has_func_result(int) -> decltype(
+auto execution_has_result(int) -> decltype(
+  // has member function `result`
   std::declval<T&>().result(),
+  // the return value of `result()` is not void
+  // only void* cannot be incremented
+  ++std::declval<traits::remove_cvr_t<decltype(std::declval<T&>().result())>*&>(),
   std::true_type{}
 );
 
 template<typename T>
-std::false_type has_func_result(...);
+std::false_type execution_has_result(...);
+
+template<typename T, typename Cond>
+auto satisfy(Cond cond) -> decltype(
+  cond(std::declval<T&>()),
+  std::true_type{}
+);
 
 template<typename T>
-struct parent_operator {
-  using type = void;
-};
-
-template<template<typename, typename...> class Child, typename Parent, typename ... Args>
-struct parent_operator<Child<Parent, Args ...>> {
-  using type = Parent;
-};
+std::false_type satisfy(...);
 } // namespace details
 
 template<typename T>
 using is_pipe_operator = decltype(details::is_pipe_operator<T>(0));
 
-template<typename T>
-using parent_operator_t = typename details::parent_operator<T>::type;
+template<typename E>
+using is_execution = std::is_base_of<ExecutionBase, E>;
 
 template<typename T>
-using control_t = typename traits::remove_cvr_t<decltype(std::declval<T&>().control)>;
+using operator_control_t = typename traits::remove_cvr_t<decltype(std::declval<T&>().control)>;
 
 template<typename T>
-using has_func_result = decltype(details::has_func_result<T>(0));
+using execution_has_result = decltype(details::execution_has_result<T>(0));
 
 template<typename T, bool enable = true>
-struct output_type {
+struct operator_output_t {
   using type = typename T::OutputType;
 };
 
 template<typename T>
-struct output_type<T, false> {
+struct operator_output_t<T, false> {
   using type = void;
 };
 
 template<typename T, bool enable = true>
-struct result_type {
+struct execution_result_t {
   using type = decltype(std::declval<T&>().result());
 };
 
 template<typename T>
-struct result_type<T, false> {
+struct execution_result_t<T, false> {
   using type = void;
 };
 } // namespace traits

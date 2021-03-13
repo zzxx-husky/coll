@@ -21,6 +21,8 @@ struct UniqueArgs {
   using ElemType = std::optional<MapperResult>;
 };
 
+inline UniqueArgs<> unique() { return {}; }
+
 template<typename Parent, typename Args>
 struct Unique {
   using InputType = typename Parent::OutputType;
@@ -31,12 +33,12 @@ struct Unique {
   Args args;
 
   template<typename Child>
-  struct Proc : public Child {
+  struct Execution : public Child {
     Args args;
     ElemType pre_elem;
 
     template<typename ...X>
-    Proc(const Args& args, X&& ... x):
+    Execution(const Args& args, X&& ... x):
       args(args),
       Child(std::forward<X>(x)...) {
     }
@@ -53,11 +55,9 @@ struct Unique {
 
   template<typename Child, typename ... X>
   inline decltype(auto) wrap(X&& ... x) {
-    return parent.template wrap<Proc<Child>, Args&, X...>(args, std::forward<X>(x)...);
+    return parent.template wrap<Execution<Child>, Args&, X...>(args, std::forward<X>(x)...);
   }
 };
-
-inline UniqueArgs<> unique() { return {}; }
 
 template<typename Parent, typename Args,
   std::enable_if_t<Args::name == "unique">* = nullptr,

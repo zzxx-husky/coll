@@ -13,18 +13,18 @@ struct IterateByIterator {
   Iter left, right;
 
   template<typename Child>
-  struct IterateByIteratorProc : public Child {
+  struct Execution : public Child {
     Iter left, right;
 
     template<typename ...X>
-    IterateByIteratorProc(const Iter& left, const Iter& right, X&& ... x):
+    Execution(const Iter& left, const Iter& right, X&& ... x):
       left(left),
       right(right),
       Child(std::forward<X>(x)...) {
     }
 
     inline void process() {
-      using Ctrl = traits::control_t<Child>;
+      using Ctrl = traits::operator_control_t<Child>;
       if constexpr (Ctrl::is_reversed) {
         for (auto i = right; i != left && !this->control.break_now;) {
           Child::process(*(--i));
@@ -39,7 +39,7 @@ struct IterateByIterator {
 
   template<typename Child, typename ... X>
   inline decltype(auto) wrap(X&& ... x) {
-    return Child::template execution<IterateByIteratorProc<Child>>(
+    return Child::template execute<Execution<Child>>(
       left, right, std::forward<X>(x)...
     );
   }
@@ -53,17 +53,17 @@ struct IterateByIterable {
   Iter iterable;
 
   template<typename Child>
-  struct IterateByIterableProc : public Child {
+  struct Execution : public Child {
     Iter iterable;
 
     template<typename ... X>
-    IterateByIterableProc(const Iter& iterable, X&& ... x):
+    Execution(const Iter& iterable, X&& ... x):
       iterable(iterable),
       Child(std::forward<X>(x)...) {
     }
 
     inline void process() {
-      using Ctrl = traits::control_t<Child>;
+      using Ctrl = traits::operator_control_t<Child>;
       if constexpr (Ctrl::is_reversed) {
         for (auto i = std::rbegin(iterable), e = std::rend(iterable);
              i != e && !this->control.break_now; ++i) {
@@ -80,7 +80,7 @@ struct IterateByIterable {
 
   template<typename Child, typename ... X>
   inline decltype(auto) wrap(X&& ... x) {
-    return Child::template execution<IterateByIterableProc<Child>>(
+    return Child::template execute<Execution<Child>>(
       iterable, std::forward<X>(x)...
     );
   }
@@ -94,19 +94,19 @@ struct Generator {
   Next next;
 
   template<typename Child>
-  struct GeneratorProc : public Child {
+  struct Execution : public Child {
     IsEmpty is_empty;
     Next next;
 
     template<typename ... X>
-    GeneratorProc(const IsEmpty& is_empty, const Next& next, X&& ... x):
+    Execution(const IsEmpty& is_empty, const Next& next, X&& ... x):
       is_empty(is_empty),
       next(next),
       Child(std::forward<X>(x)...) {
     }
 
     inline void process() {
-      using Ctrl = traits::control_t<Child>;
+      using Ctrl = traits::operator_control_t<Child>;
       static_assert(!Ctrl::is_reversed, "Generator does not support reverse iteration. "
         "Consider to use `with_buffer()` for the closest downstream `reverse()` operator.");
 
@@ -118,7 +118,7 @@ struct Generator {
 
   template<typename Child, typename ... X>
   inline decltype(auto) wrap(X&& ... x) {
-    return Child::template execution<GeneratorProc<Child>>(
+    return Child::template execute<Execution<Child>>(
       is_empty, next, std::forward<X>(x)...
     );
   }
@@ -134,6 +134,51 @@ struct Generator {
     return until([repeat_times]() mutable {
       return repeat_times-- == 0;
     });
+  }
+};
+
+template<typename ParentExecution>
+struct PostIterateResultOfExecution {
+  using OutputType = typename traits::iterable<traits::execution_result_t<ParentExecution>>::element_t;
+
+  ParentExecution parent;
+
+  template<typename Child>
+  struct Execution : public Child {
+    template<typename ... X>
+    Execution(ParentExecution parent, X&& ... x):
+      parent(parent),
+      Child(std::forward<X>(x)...) {
+    }
+
+    ParentExecution parent;
+
+    template<typename ... Y>
+    inline void process(Y&& ... y) {
+      parent.process(std::forward<Y>(y)...);
+    }
+
+    inline void end() {
+      parent.end();
+      auto&& r = parent.result();
+
+      using Ctrl = traits::operator_control_t<Child>;
+      if constexpr (Ctrl::is_reversed) {
+        for (auto i = r.end(), left = r.begin(); i != left && !this->control.break_now;) {
+          Child::process(*(--i));
+        }
+      } else {
+        for (auto i = r.begin(), right = r.end(); i != right && !this->control.break_now; ++i) {
+          Child::process(*i);
+        }
+      }
+      Child::end();
+    }
+  };
+
+  template<typename Child, typename ... X>
+  inline auto wrap(X&& ... x) {
+    return Execution<Child>(std::move(parent), std::forward<X>(x)...);
   }
 };
 } // namespace coll

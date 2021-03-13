@@ -53,7 +53,9 @@ struct TopKBuilder {
 
   template<typename By>
   inline auto by(By cmp_by) {
-    return with(rev_compare_by(cmp_by));
+    return with([=](const auto& a, const auto& b) mutable {
+      return cmp_by(b) < cmp_by(a);
+    });
   }
 
   // builder function

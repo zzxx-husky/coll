@@ -3,53 +3,51 @@
 #include "base.hpp"
 
 namespace coll {
-template<typename P>
+template<typename Action>
 struct ForeachArgs {
   constexpr static std::string_view name = "foreach";
-  P process;
+  Action action;
 };
 
-template<typename Parent, typename Args>
-struct Foreach {
-  using InputType = typename traits::remove_cvr_t<Parent>::OutputType;
-  using OutputType = InputType;
+template<typename Action>
+inline ForeachArgs<Action> foreach(Action action) {
+  return {std::forward<Action>(action)};
+}
 
-  Parent parent;
-  Args args;
+inline auto act() {
+  return foreach([](auto&&){});
+}
 
-  template<typename Child>
-  struct Proc : public Child {
-    Args args;
-
-    template<typename ... X>
-    Proc(const Args& args, X&& ... x):
-      args(args),
-      Child(std::forward<X>(x)...) {
-    }
-
-    inline void process(InputType e) {
-      args.process(e);
-      Child::process(std::forward<InputType>(e));
-    }
-  };
-
-  template<typename Child, typename ... X>
-  inline decltype(auto) wrap(X&& ... x) {
-    return parent.template wrap<Proc<Child>, Args&, X...>(
-      args, std::forward<X>(x)...
-    );
+template<typename Args, typename Input>
+struct ForeachExecution : public ExecutionBase {
+  ForeachExecution(const Args& args):
+    args(args) {
   }
-};
 
-template<typename P>
-ForeachArgs<P> foreach(P process) { return {std::forward<P>(process)}; }
+  Args args;
+  auto_val(control, default_control());
+
+  inline void process(Input e) {
+    args.action(std::forward<Input>(e));
+  }
+
+  inline void end() {}
+
+  constexpr static ExecutionType execution_type = Run;
+
+  template<typename Exec, typename ... ArgT>
+  static void execute(ArgT&& ... args) {
+    auto exec = Exec(std::forward<ArgT>(args)...);
+    exec.process();
+    exec.end();
+  };
+};
 
 template<typename Parent, typename Args,
   std::enable_if_t<Args::name == "foreach">* = nullptr,
   std::enable_if_t<traits::is_pipe_operator<Parent>::value>* = nullptr>
-inline Foreach<Parent, Args>
-operator | (Parent&& parent, Args&& args) {
-  return {std::forward<Parent>(parent), std::forward<Args>(args)};
+inline decltype(auto) operator | (Parent&& parent, Args&& args) {
+  using Input = typename traits::remove_cvr_t<Parent>::OutputType;
+  return parent.template wrap<ForeachExecution<Args, Input>, Args&>(args);
 }
 } // namespace coll
-

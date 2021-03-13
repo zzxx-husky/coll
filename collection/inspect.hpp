@@ -3,23 +3,19 @@
 #include "base.hpp"
 
 namespace coll {
-template<typename M>
-struct MapArgs {
-  constexpr static std::string_view name = "map";
-
-  template<typename Input>
-  using MapperResultType = typename traits::invocation<M, Input>::result_t;
-
-  M mapper;
+template<typename P>
+struct InspectArgs {
+  constexpr static std::string_view name = "inspect";
+  P process;
 };
 
-template<typename M>
-MapArgs<M> map(M mapper) { return {mapper}; }
+template<typename P>
+InspectArgs<P> inspect(P process) { return {std::forward<P>(process)}; }
 
 template<typename Parent, typename Args>
-struct Map {
+struct Inspect {
   using InputType = typename traits::remove_cvr_t<Parent>::OutputType;
-  using OutputType = typename Args::template MapperResultType<InputType>;
+  using OutputType = InputType;
 
   Parent parent;
   Args args;
@@ -35,23 +31,25 @@ struct Map {
     }
 
     inline void process(InputType e) {
-      Child::process(args.mapper(std::forward<InputType>(e)));
+      args.process(e);
+      Child::process(std::forward<InputType>(e));
     }
   };
 
   template<typename Child, typename ... X>
   inline decltype(auto) wrap(X&& ... x) {
     return parent.template wrap<Execution<Child>, Args&, X...>(
-      args, std::forward<X>(x) ...
+      args, std::forward<X>(x)...
     );
   }
 };
 
 template<typename Parent, typename Args,
-  std::enable_if_t<Args::name == "map">* = nullptr,
+  std::enable_if_t<Args::name == "inspect">* = nullptr,
   std::enable_if_t<traits::is_pipe_operator<Parent>::value>* = nullptr>
-inline Map<Parent, Args>
+inline Inspect<Parent, Args>
 operator | (Parent&& parent, Args&& args) {
   return {std::forward<Parent>(parent), std::forward<Args>(args)};
 }
 } // namespace coll
+

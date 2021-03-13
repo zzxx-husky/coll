@@ -25,6 +25,10 @@ struct WindowArgs {
   inline WindowType<InputType> create_window() { return {size, step}; }
 };
 
+WindowArgs<false> window(size_t size, size_t step) { return {size, step}; }
+
+WindowArgs<false> window(size_t size) { return {size, size}; }
+
 template<typename Parent, typename Args>
 struct Window {
   using InputType = typename Parent::OutputType;
@@ -35,9 +39,9 @@ struct Window {
   Args args;
 
   template<typename Child>
-  struct Proc : public Child {
+  struct Execution : public Child {
     template<typename ...X>
-    Proc(const Args& args, X&& ... x):
+    Execution(const Args& args, X&& ... x):
       args(args),
       Child(std::forward<X>(x)...) {
     }
@@ -52,7 +56,7 @@ struct Window {
     }
 
     inline void end() {
-      if (w.shrink_remaining_elements()) {
+      if (w.pack_remaining_elements()) {
         Child::process(w);
       }
       Child::end();
@@ -71,19 +75,15 @@ struct Window {
     // A special case that allows native reversion is window with step = 1,
     // where each input will be put in at least one window.
     //
-    using Ctrl = traits::control_t<Child>;
+    using Ctrl = traits::operator_control_t<Child>;
     static_assert(!Ctrl::is_reversed, "Window does not support reverse iteration. "
       "Consider to use `with_buffer()` for the closest downstream `reverse()` operator.");
 
-    return parent.template wrap<Proc<Child>, Args&, X...>(
+    return parent.template wrap<Execution<Child>, Args&, X...>(
       args, std::forward<X>(x)...
     );
   }
 };
-
-WindowArgs<false> window(size_t size, size_t step) { return {size, step}; }
-
-WindowArgs<false> window(size_t size) { return {size, size}; }
 
 template<typename Parent, typename Args,
   std::enable_if_t<Args::name == "window">* = nullptr,

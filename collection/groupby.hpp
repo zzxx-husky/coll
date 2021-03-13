@@ -136,7 +136,7 @@ inline auto operator | (Parent&& parent, Args&& args) {
 template<typename Parent, typename Args,
   std::enable_if_t<Args::name == "groupby" && Args::is_adjacent>* = nullptr,
   std::enable_if_t<traits::is_pipe_operator<Parent>::value>* = nullptr>
-inline GroupByAdjacent<Parent, Args> 
+inline GroupByAdjacent<Parent, Args>
 operator | (Parent&& parent, Args&& args) {
   return {std::forward<Parent>(parent), std::forward<Args>(args)};
 }

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "base.hpp"
+
 namespace coll {
 template<typename ContainerBuilder, bool CopyOrMove>
 struct ToArgs {
@@ -70,8 +72,8 @@ struct To {
   Parent parent;
   Args args;
 
-  struct ToProc {
-    ToProc(const Args& args): args(args) {}
+  struct Execution : public ExecutionBase {
+    Execution(const Args& args): args(args) {}
 
     Args args;
     auto_val(container, args.template get_container<InputType>());
@@ -87,18 +89,20 @@ struct To {
 
     inline void end() {}
 
-    inline decltype(auto) result() { 
+    inline decltype(auto) result() {
       if constexpr (Args::is_container_ref) {
         return container;
       } else {
         // make a new copy, move existing member to the copy, return the copy
+        // the new copy will be constructed in-place.
         return decltype(container)(std::move(container));
       }
     }
 
-    constexpr static ExecutionType execution_type = RunExecution;
+    constexpr static ExecutionType execution_type = Run;
+
     template<typename Exec, typename ... ArgT>
-    static decltype(auto) execution(ArgT&& ... args) {
+    static decltype(auto) execute(ArgT&& ... args) {
       auto exec = Exec(std::forward<ArgT>(args)...);
       exec.process();
       exec.end();
@@ -106,8 +110,8 @@ struct To {
     }
   };
 
-  inline decltype(auto) to() {
-    return parent.template wrap<ToProc, Args&>(args);
+  inline decltype(auto) execute() {
+    return parent.template wrap<Execution, Args&>(args);
   }
 };
 
@@ -116,6 +120,6 @@ template<typename Parent, typename Args,
   std::enable_if_t<traits::is_pipe_operator<Parent>::value>* = nullptr>
 inline decltype(auto)
 operator | (Parent&& parent, Args&& args) {
-  return To<Parent, Args>{std::forward<Parent>(parent), std::forward<Args>(args)}.to();
+  return To<Parent, Args>{std::forward<Parent>(parent), std::forward<Args>(args)}.execute();
 }
 } // namespace coll

@@ -13,6 +13,8 @@ struct HeadArgs {
   constexpr static bool use_ref = Ref;
 };
 
+inline HeadArgs<false> head() { return {}; }
+
 template<typename Parent, typename Args>
 struct Head {
   using InputType = typename traits::remove_cvr_t<Parent>::OutputType;
@@ -24,7 +26,7 @@ struct Head {
   Parent parent;
   Args args;
 
-  struct HeadProc {
+  struct Execution : public ExecutionBase {
     ResultType res;
     auto_val(control, default_control());
 
@@ -37,9 +39,10 @@ struct Head {
 
     inline auto& result() { return res; }
 
-    constexpr static ExecutionType execution_type = RunExecution;
+    constexpr static ExecutionType execution_type = Run;
+
     template<typename Exec, typename ... ArgT>
-    static auto execution(ArgT&& ... args) {
+    static auto execute(ArgT&& ... args) {
       auto exec = Exec(std::forward<ArgT>(args)...);
       exec.process();
       exec.end();
@@ -48,11 +51,9 @@ struct Head {
   };
 
   inline decltype(auto) head() {
-    return parent.template wrap<HeadProc>();
+    return parent.template wrap<Execution>();
   }
 };
-
-inline HeadArgs<false> head() { return {}; }
 
 template<typename Parent, typename Args,
   std::enable_if_t<Args::name == "head">* = nullptr,

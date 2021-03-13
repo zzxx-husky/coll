@@ -92,7 +92,7 @@ void make_calendar(int year, int months_per_row) {
         coll::generate(anony_c(" Su Mo Tu We Th Fr Sa")).times(w.size())
           | coll::print("", "     ", "\n").to(out);
         coll::range(6)
-          | coll::foreach([&](int week) {
+          | coll::inspect([&](int week) {
               coll::iterate(w) | coll::print("", "     ", "\n").to(out).format([&](auto& out, auto& i) {
                 out << std::setw(7 * 3) << (week < i.second.size() ? i.second[week].data() : "");
               });
@@ -111,7 +111,7 @@ int main(int argc, char** argv) {
   coll::range(1, argc)
     | coll::map(anonyc_cc(argv[_]))
     | coll::window(2)
-    | coll::foreach([&](auto& w) {
+    | coll::inspect([&](auto& w) {
         if (strcmp(w[0], "year") == 0) {
           year = atoi(w[1]);
         } else if (strcmp(w[0], "width") == 0) {

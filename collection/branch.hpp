@@ -4,12 +4,17 @@
 #include "place_holder.hpp"
 
 namespace coll {
-template<typename PipelineCtor>
+template<typename PipelineBuilder>
 struct BranchArgs {
   constexpr static std::string_view name = "branch";
-  // member
-  PipelineCtor construct;
+
+  PipelineBuilder pipeline_builder;
 };
+
+template<typename PipelineBuilder>
+inline BranchArgs<PipelineBuilder> branch(PipelineBuilder builder) {
+  return {std::forward<PipelineBuilder>(builder)};
+}
 
 template<typename Parent, typename Args>
 struct Branch {
@@ -26,18 +31,18 @@ struct Branch {
   struct B : public Child { using Child::Child; };
 
   template<typename OutputChild, typename BranchChild>
-  struct Proc : public A<OutputChild>, public B<BranchChild> {
+  struct Execution : public A<OutputChild>, public B<BranchChild> {
     template<typename TupleX, typename TupleY,
       size_t XN = std::tuple_size<traits::remove_cvr_t<TupleX>>::value,
       size_t YN = std::tuple_size<traits::remove_cvr_t<TupleY>>::value>
-    Proc(Args& args, TupleX&& x, TupleY&& y): Proc(
+    Execution(Args& args, TupleX&& x, TupleY&& y): Execution(
       args,
       std::forward<TupleX>(x), std::make_index_sequence<XN>{},
       std::forward<TupleY>(y), std::make_index_sequence<YN>{}) {
     }
 
     template<typename TupleX, typename TupleY, size_t ... XI, size_t ... YI>
-    Proc(Args& args,
+    Execution(Args& args,
       TupleX&& x, std::index_sequence<XI...>,
       TupleY&& y, std::index_sequence<YI...>):
       args(args),
@@ -66,8 +71,14 @@ struct Branch {
       A<OutputChild>::end();
     }
 
+    inline decltype(auto) result() {
+      if constexpr (traits::execution_has_result<A<OutputChild>>::value) {
+        return A<OutputChild>::result();
+      }
+    }
+
     using A<OutputChild>::execution_type;
-    using A<OutputChild>::execution;
+    using A<OutputChild>::execute;
   };
 
   template<typename OutputChild, typename ... X>
@@ -80,7 +91,7 @@ struct Branch {
 
     template<typename BranchChild, typename ... Y>
     inline decltype(auto) wrap(Y&& ... y) {
-      return parent.template wrap<Proc<OutputChild, BranchChild>>(
+      return parent.template wrap<Execution<OutputChild, BranchChild>, Args&, std::tuple<X...>&>(
         args, x, std::forward_as_tuple(std::forward<Y>(y)...)
       );
     }
@@ -88,17 +99,12 @@ struct Branch {
 
   template<typename OutputChild, typename ... X>
   inline decltype(auto) wrap(X&& ... x) {
-    return args.construct(Helper<OutputChild, X...>{
+    return args.pipeline_builder(Helper<OutputChild, X...>{
       parent, args,
       std::forward_as_tuple(std::forward<X>(x)...)
     });
   }
 };
-
-template<typename PipelineCtor>
-inline BranchArgs<PipelineCtor> branch(PipelineCtor ctor) {
-  return {std::forward<PipelineCtor>(ctor)};
-}
 
 template<typename Parent, typename Args,
   std::enable_if_t<Args::name == "branch">* = nullptr,

@@ -16,50 +16,50 @@ struct GroupByAdjacent {
   Args args;
 
   template<typename Child>
-  struct Proc : public Child {
-      Args args;
-      std::optional<KeyType> current_key;
-      auto_val(aggregator, args.template get_aggregator<InputType>());
+  struct Execution : public Child {
+    Args args;
+    std::optional<KeyType> current_key;
+    auto_val(aggregator, args.template get_aggregator<InputType>());
 
-      template<typename ...X>
-      Proc(const Args& args, X&& ... x):
-        args(args),
-        Child(std::forward<X>(x)...) {
-      }
+    template<typename ...X>
+    Execution(const Args& args, X&& ... x):
+      args(args),
+      Child(std::forward<X>(x)...) {
+    }
 
-      inline void process(InputType elem) {
-        auto&& key = args.keyby(elem);
-        if (key != current_key) {
-          if (bool(current_key)) {
-            Child::process(OutputType{*current_key, std::move(aggregator)});
-            aggregator = std::move(args.template get_aggregator<InputType>());
-            // TODO(zzxx): how to clear the aggregator;
-            // if constexpr (traits::has_clear<AggregatorType>::value) {
-            //   aggregator.clear();
-            // } else {
-            //   aggregator = std::move(args.template get_aggregator<InputType>());
-            // }
-          }
-          current_key = key;
-        }
-        args.aggregate_to(aggregator, args.valby(elem));
-      }
-
-      inline void end() {
+    inline void process(InputType elem) {
+      auto&& key = args.keyby(elem);
+      if (key != current_key) {
         if (bool(current_key)) {
           Child::process(OutputType{*current_key, std::move(aggregator)});
+          aggregator = std::move(args.template get_aggregator<InputType>());
+          // TODO(zzxx): how to clear the aggregator;
+          // if constexpr (traits::has_clear<AggregatorType>::value) {
+          //   aggregator.clear();
+          // } else {
+          //   aggregator = std::move(args.template get_aggregator<InputType>());
+          // }
         }
-        Child::end();
+        current_key = key;
       }
-    };
+      args.aggregate_to(aggregator, args.valby(elem));
+    }
+
+    inline void end() {
+      if (bool(current_key)) {
+        Child::process(OutputType{*current_key, std::move(aggregator)});
+      }
+      Child::end();
+    }
+  };
 
   template<typename Child, typename ... X>
   inline decltype(auto) wrap(X&& ... x) {
-    using Ctrl = traits::control_t<Child>;
+    using Ctrl = traits::operator_control_t<Child>;
     static_assert(!Ctrl::is_reversed, "GroupByAdjacent does not support reverse iteration. "
       "Consider to use `with_buffer()` for the closest downstream `reverse()` operator.");
-    
-    return parent.template wrap<Proc<Child>, Args&, X...>(
+
+    return parent.template wrap<Execution<Child>, Args&, X...>(
       args, std::forward<X>(x)...
     );
   }

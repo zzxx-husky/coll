@@ -108,11 +108,10 @@ That is not done yet, but similar technique is applied for `reverse` operator, i
 For point 3, it is typically what we hope the compiler will optimize for us, i.e., the overhead of using a `pair` can be removed by the compiler.
 
 ## TODOs:
-+ Optimize: window with step=1 can actually support reversion;
-+ Optimize: window can actually support reversion if the num of inputs is known in advance;
 + API: window with aggregation;
-+ API: native support for parallel processing ([scala para coll](https://github.com/scala/scala-parallel-collections));
-   + Several parallel model: producer-consumer data parallel; partitioned data parallel; replicate data parallel
++ Optimization: Improve parallel operators:
+   + Thread sharing among different parallel operators
+   + Data exchange among different parallel operators
 
 ## Useful links
 + [Operator List](https://github.com/zzxx-husky/cpp-collection-api/wiki/OperatorList), which lists all the operators in `coll`.

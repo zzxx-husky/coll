@@ -21,6 +21,10 @@ struct InitTailArgs {
   >;
 };
 
+inline InitTailArgs<true, false> init() { return {}; }
+
+inline InitTailArgs<false, false> tail() { return {}; }
+
 // return all elements except the last one
 template<typename Parent, typename Args>
 struct InitTail {
@@ -31,12 +35,12 @@ struct InitTail {
   Args args;
 
   template<typename Child>
-  struct InitProc : public Child {
+  struct InitExecution : public Child {
     Args args;
     typename Args::template ElemType<InputType> prev_elem;
 
     template<typename ... X>
-    InitProc(const Args& args, X&& ... x):
+    InitExecution(const Args& args, X&& ... x):
       args(args),
       Child(std::forward<X>(x)...) {
     }
@@ -50,12 +54,12 @@ struct InitTail {
   };
 
   template<typename Child>
-  struct TailProc : public Child {
+  struct TailExecution : public Child {
     Args args;
     bool skipped_head = false;
 
     template<typename ... X>
-    TailProc(const Args& args, X&& ... x):
+    TailExecution(const Args& args, X&& ... x):
       args(args),
       Child(std::forward<X>(x)...) {
     }
@@ -71,21 +75,18 @@ struct InitTail {
 
   template<typename Child, typename ... X>
   inline decltype(auto) wrap(X&& ... x) {
-    using Ctrl = traits::control_t<Child>;
+    using Ctrl = traits::operator_control_t<Child>;
     if constexpr (Args::is_init != Ctrl::is_reversed) {
-      return parent.template wrap<InitProc<Child>, Args&, X...>(
+      return parent.template wrap<InitExecution<Child>, Args&, X...>(
         args, std::forward<X>(x) ...
       );
     } else {
-      return parent.template wrap<TailProc<Child>, Args&, X...>(
+      return parent.template wrap<TailExecution<Child>, Args&, X...>(
         args, std::forward<X>(x) ...
       );
     }
   }
 };
-
-inline InitTailArgs<true, false> init() { return {}; }
-inline InitTailArgs<false, false> tail() { return {}; }
 
 template<typename Parent, typename Args,
   std::enable_if_t<Args::name == "init_tail">* = nullptr,

@@ -16,10 +16,12 @@
 #include "distinct.hpp"
 #include "filter.hpp"
 #include "flatmap.hpp"
-#include "foreach.hpp"
 #include "groupby.hpp"
 #include "init_tail.hpp"
+#include "inspect.hpp"
 #include "map.hpp"
+#include "parallel.hpp"
+#include "parallel_partition.hpp"
 #include "partition.hpp"
 #include "reverse.hpp"
 #include "sort.hpp"
@@ -28,9 +30,9 @@
 #include "window.hpp"
 #include "zip_with_index.hpp"
 // sink
-#include "act.hpp"
 #include "aggregate.hpp"
 #include "aggregate_sinks.hpp"
+#include "foreach.hpp"
 #include "head.hpp"
 #include "last.hpp"
 #include "print.hpp"
@@ -86,6 +88,16 @@ template<typename Coll,
   std::enable_if_t<traits::is_iterable<Coll>::value>* = nullptr>
 inline auto operator | (Coll&& c, PostIterate) {
   return iterate(std::forward<Coll>(c));
+}
+
+template<typename Execution,
+  // it is an execution
+  std::enable_if_t<traits::is_execution<Execution>::value>* = nullptr,
+  // the execution has result
+  std::enable_if_t<traits::execution_has_result<Execution>::value>* = nullptr,
+  // the result is iterable
+  std::enable_if_t<traits::is_iterable<traits::execution_result_t<Execution>>::value>* = nullptr>
+inline auto operator | (Execution&& e, PostIterate) {
 }
 
 template<typename E, typename ... I>

@@ -6,11 +6,6 @@
 #include "utils.hpp"
 
 namespace coll {
-template<typename T,
-  typename RT = std::remove_const_t<T>>
-inline RT deconst(T&& v) {
-  return static_cast<RT>(v);
-}
 namespace traits {
 namespace details {
 template<typename Func, typename ... Args>
@@ -41,15 +36,6 @@ auto is_iterable_impl(int) -> decltype(
 
 template<typename T>
 std::false_type is_iterable_impl(...);
-
-template<typename C, typename ... ArgT>
-auto has_process_impl(int) -> decltype(
-  std::declval<C&>().process(std::declval<ArgT>() ...),
-  std::true_type{}
-);
-
-template<typename C, typename ... ArgT>
-std::false_type has_process_impl(...);
 
 template<typename C>
 auto has_reserve_impl(int) -> decltype(
@@ -162,27 +148,6 @@ struct iterator {
   using element_t = decltype(*std::declval<I&>());
 };
 
-template<typename Pair>
-struct pair {};
-
-template<typename K, typename V>
-struct pair<std::pair<K, V>> {
-  using key_t = K;
-  using value_t = V;
-};
-
-template<typename K, typename V>
-struct pair<std::tuple<K, V>> {
-  using key_t = K;
-  using value_t = V;
-};
-
-template<typename K, typename Arg, typename ... ArgT>
-struct pair<std::tuple<K, Arg, ArgT ...>> {
-  using key_t = K;
-  using value_t = std::tuple<Arg, ArgT ...>;
-};
-
 // https://stackoverflow.com/questions/24855160/how-to-tell-if-a-c-template-type-is-c-style-string
 template<class T>
 struct is_c_str : std::integral_constant<
@@ -190,9 +155,6 @@ struct is_c_str : std::integral_constant<
   std::is_same<char const *, typename std::decay_t<T>>::value ||
   std::is_same<char *, typename std::decay_t<T>>::value
 > {};
-
-template<typename C, typename ... ArgT>
-using has_process = decltype(details::has_process_impl<C, ArgT ...>(0));
 
 template<typename C>
 using has_reserve = decltype(details::has_reserve_impl<C>(0));

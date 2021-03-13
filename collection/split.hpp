@@ -46,13 +46,13 @@ struct Split {
   Args args;
 
   template<typename Child>
-  struct Proc : public Child {
+  struct Execution : public Child {
     Args args;
     auto_val(container, args.template make_container<InputType>());
     auto_val(is_empty,  true);
 
     template<typename ...X>
-    Proc(const Args& args, X&& ... x):
+    Execution(const Args& args, X&& ... x):
       args(args),
       Child(std::forward<X>(x)...) {
     }
@@ -81,11 +81,11 @@ struct Split {
 
   template<typename Child, typename ... X>
   inline decltype(auto) wrap(X&& ... x) {
-    using Ctrl = traits::control_t<Child>;
+    using Ctrl = traits::operator_control_t<Child>;
     static_assert(!Ctrl::is_reversed, "Spilt does not support reverse iteration. "
       "Consider to use `with_buffer()` for the closest downstream `reverse()` operator.");
     
-    return parent.template wrap<Proc<Child>, Args&, X...>(
+    return parent.template wrap<Execution<Child>, Args&, X...>(
       args, std::forward<X>(x)...
     );
   }

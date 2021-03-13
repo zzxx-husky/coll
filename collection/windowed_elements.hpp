@@ -118,7 +118,7 @@ public:
 
   inline size_t size() const { return num_elems; }
 
-  bool shrink_remaining_elements() {
+  bool pack_remaining_elements() {
     if (elems.size() < window_size) {
       return !elems.empty();
     }

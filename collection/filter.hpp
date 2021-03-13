@@ -9,6 +9,9 @@ struct FilterArgs {
   F filter;
 };
 
+template<typename F>
+inline FilterArgs<F> filter(F lambda) { return {lambda}; }
+
 template<typename Parent, typename Args>
 struct Filter {
   using InputType = typename traits::remove_cvr_t<Parent>::OutputType;
@@ -18,9 +21,9 @@ struct Filter {
   Args args;
 
   template<typename Child>
-  struct Proc : public Child {
+  struct Execution : public Child {
     template<typename ... X>
-    Proc(const Args& args, X&& ... x):
+    Execution(const Args& args, X&& ... x):
       args(args),
       Child(std::forward<X>(x)...) {
     }
@@ -36,14 +39,11 @@ struct Filter {
 
   template<typename Child, typename ... X>
   inline decltype(auto) wrap(X&& ... x) {
-    return parent.template wrap<Proc<Child>, Args&, X...>(
+    return parent.template wrap<Execution<Child>, Args&, X...>(
       args, std::forward<X>(x)...
     );
   }
 };
-
-template<typename F>
-inline FilterArgs<F> filter(F lambda) { return {lambda}; }
 
 template<typename Parent, typename Args,
   std::enable_if_t<Args::name == "filter">* = nullptr,

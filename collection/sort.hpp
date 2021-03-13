@@ -113,6 +113,8 @@ template<
   }
 };
 
+inline SortArgs<> sort() { return {}; }
+
 template<typename Parent, typename Args>
 struct Sort {
   using InputType = typename Parent::OutputType;
@@ -123,12 +125,12 @@ struct Sort {
   Args args;
 
   template<typename Child>
-  struct Proc : public Child {
+  struct Execution : public Child {
     // 1. Args, if any
     Args args;
 
     template<typename ... X>
-    Proc(const Args& args, X&& ... x):
+    Execution(const Args& args, X&& ... x):
       args(args),
       Child(std::forward<X>(x)...) {
     }
@@ -144,7 +146,7 @@ struct Sort {
 
     // 4. End
     inline void sort() {
-      using Ctrl = traits::control_t<Child>;
+      using Ctrl = traits::operator_control_t<Child>;
       auto comparator = args.template get_comparator<InputType, Ctrl::is_reversed>();
       if constexpr (Args::is_cache_by_ref) {
         std::sort(elems.begin(), elems.end(), [&](auto& ref_a, auto& ref_b) {
@@ -171,11 +173,9 @@ struct Sort {
 
   template<typename Child, typename ... X>
   inline decltype(auto) wrap(X&& ... x) {
-    return parent.template wrap<Proc<Child>, Args&, X...>(args, std::forward<X>(x)...);
+    return parent.template wrap<Execution<Child>, Args&, X...>(args, std::forward<X>(x)...);
   }
 };
-
-inline SortArgs<> sort() { return {}; }
 
 template<typename Operator, typename Args,
   typename Parent = traits::remove_cvr_t<Operator>,
