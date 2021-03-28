@@ -7,16 +7,10 @@
 #include "collection/topk.hpp"
 
 int main() {
-  const int N = 100000000;
+  const int N = 50000000;
   auto ints = coll::range(N)
     | coll::map(anony_cc(rand()))
-    | coll::to(anonyc_cv(
-        std::vector<typename decltype(_)::type> vec;
-        vec.reserve(N);
-        return vec;
-      ));
-
-  auto ints2 = ints;
+    | coll::to_vector(N);
 
   auto duration = [](auto exec) {
     auto start = std::chrono::steady_clock::now();
@@ -25,11 +19,13 @@ int main() {
     return std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
   };
 
+  auto ints1 = ints;
   auto std_sort_time = duration([&]() {
-    std::sort(ints.begin(), ints.end());
+    std::sort(ints1.begin(), ints1.end());
   });
   std::cout << "std::sort duration: " << std_sort_time << " ms." << std::endl;
 
+  auto ints2 = ints;
   auto parallel_sort_time = duration([&]() {
     const int T = 4;     // number of threads
     const int P = T * 2; // number of partitions
@@ -81,6 +77,57 @@ int main() {
     sorted_ints2.swap(ints2);
   });
   std::cout << "parallel sort duration: " << parallel_sort_time << " ms." << std::endl;
+  std::cout << "ints is" << (ints1 == ints2 ? " " : " not ") << "the same as ints2." << std::endl;
+  ints2.clear();
 
-  std::cout << "ints is" << (ints == ints2 ? " " : "not") << "the same as ints2." << std::endl;
+  auto ints3 = ints;
+  auto terasort_time = duration([&]() {
+    const int T = 4;      // num of threads
+    const int M = T * 2;  // num of mapper partitions
+    const int R = T;      // num of reducer partitions
+    auto seeds = coll::range(R * 10)
+      | coll::map(anonyr_cc(ints2[abs(rand()) % N]))
+      | coll::sort()
+      | coll::window(1, 10)       // because R * 10
+      | coll::map(anony_rc(_[0])) // the first and the only element in the window
+      | coll::tail()              // skip the last window
+      | coll::to<std::vector>();  // size of vector: R
+
+    zaf::ActorEngine actor_engine{coll::parallel_utils::actor_system, T};
+
+    auto sorted_ints3 = coll::range(M)
+      | coll::parallel(M, [&](auto _, auto in) {
+          return in | coll::flatmap([&](size_t pid) {
+            auto par_begin = ints3.size() / M * pid + std::min(pid, ints3.size() % M);
+            auto par_end = par_begin + ints3.size() / M + (pid < ints3.size() % M);
+            return coll::iterate(ints3.begin() + par_begin, ints3.begin() + par_end)
+              | coll::groupby(anonyr_cc(std::lower_bound(seeds.begin(), seeds.end(), _) - seeds.begin()));
+          });
+        })
+        .execute_by(actor_engine)
+      | coll::parallel_partition(R, [&](auto _, auto in) {
+          return in
+            | coll::flatmap(anony_rr(_.second))
+            | coll::sort()
+            | coll::to<std::vector>();
+        })
+        .key_by(anony_ar(_.first))
+        .execute_by(actor_engine)
+      | coll::aggregate(anony_ac(std::vector<std::vector<int>>(R)),
+          [](auto& vs, auto&& v) {
+            vs[v.first] = std::move(v.second);
+          })
+      | coll::iterate()
+      | coll::aggregate([=](auto type) {
+          std::vector<int> vec;
+          vec.reserve(N);
+          return vec;
+        }, [](auto& vec, auto&& x) {
+          vec.insert(vec.end(), x.begin(), x.end());
+        });
+    sorted_ints3.swap(ints3);
+  });
+  std::cout << "terasort duration: " << terasort_time << " ms." << std::endl;
+  std::cout << "ints is" << (ints1 == ints3 ? " " : " not ") << "the same as ints3." << std::endl;
+  ints3.clear();
 }

@@ -49,6 +49,10 @@ struct SWMRQueue {
     return status[idx].load(std::memory_order_acquire) == Writable;
   }
 
+  inline bool is_ended() {
+    return ended.load(std::memory_order_release); 
+  }
+
   inline void end() {
     ended.store(true, std::memory_order_release); 
   }
@@ -128,12 +132,26 @@ struct MWSRQueue {
   template<typename U>
   void push(U&& u) {
     auto idx = write_idx.fetch_add(1, std::memory_order_acq_rel);
-    while (read_idx.load(std::memory_order_acquire) + capacity == idx) {
+    while (read_idx.load(std::memory_order_acquire) + capacity <= idx) {
       std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
     idx &= capacity_mask;
     elements[idx] = std::forward<U>(u);
     status[idx].store(Readable, std::memory_order_release);
+  }
+
+  template<typename UGetter>
+  std::optional<size_t> try_push(std::optional<size_t> idx, UGetter u) {
+    if (!idx) {
+      idx = write_idx.fetch_add(1, std::memory_order_acq_rel);
+    }
+    if (read_idx.load(std::memory_order_acquire) + capacity <= *idx) {
+      return idx; // return the idx and retry in the next call
+    }
+    *idx &= capacity_mask;
+    elements[*idx] = u();
+    status[*idx].store(Readable, std::memory_order_release);
+    return std::nullopt;
   }
 
   inline bool is_empty() const {

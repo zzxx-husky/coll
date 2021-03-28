@@ -25,9 +25,9 @@ struct WindowArgs {
   inline WindowType<InputType> create_window() { return {size, step}; }
 };
 
-WindowArgs<false> window(size_t size, size_t step) { return {size, step}; }
+inline WindowArgs<false> window(size_t size, size_t step) { return {size, step}; }
 
-WindowArgs<false> window(size_t size) { return {size, size}; }
+inline WindowArgs<false> window(size_t size) { return {size, size}; }
 
 template<typename Parent, typename Args>
 struct Window {
@@ -86,9 +86,11 @@ struct Window {
 };
 
 template<typename Parent, typename Args,
-  std::enable_if_t<Args::name == "window">* = nullptr,
-  std::enable_if_t<traits::is_pipe_operator<Parent>::value>* = nullptr>
-inline Window<Parent, Args>
+  typename P = traits::remove_cvr_t<Parent>,
+  typename A = traits::remove_cvr_t<Args>,
+  std::enable_if_t<A::name == "window">* = nullptr,
+  std::enable_if_t<traits::is_pipe_operator<P>::value>* = nullptr>
+inline Window<P, A>
 operator | (Parent&& parent, Args&& args) {
   return {std::forward<Parent>(parent), std::forward<Args>(args)};
 }

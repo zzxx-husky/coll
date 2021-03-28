@@ -14,12 +14,6 @@ struct AggregateArgs {
   AggregateTo aggregate;
 
   // used by operator
-  template<typename Input>
-  using AggregatorType = decltype(
-    std::declval<AggregateArgs<AggregatorBuilder, AggregateTo>&>()
-      .template get_aggregator<Input>()
-  );
-
   template<typename Input, typename Elem = traits::remove_cvr_t<Input>>
   inline decltype(auto) get_aggregator() {
     if constexpr (traits::is_builder<AggregatorBuilder, Elem>::value) {
@@ -46,7 +40,7 @@ inline auto aggregate(AggregateTo&& b) {
 template<typename Parent, typename Args>
 struct Aggregate {
   using InputType = typename traits::remove_cvr_t<Parent>::OutputType;
-  using AggregatorType = typename Args::template AggregatorType<InputType>;
+  using AggregatorType = decltype(std::declval<Args&>().template get_aggregator<InputType>());
 
   Parent parent;
   Args args;
@@ -86,10 +80,12 @@ struct Aggregate {
 };
 
 template<typename Parent, typename Args,
-  std::enable_if_t<Args::name == "aggregate">* = nullptr,
-  std::enable_if_t<traits::is_pipe_operator<Parent>::value>* = nullptr>
+  typename P = traits::remove_cvr_t<Parent>,
+  typename A = traits::remove_cvr_t<Args>,
+  std::enable_if_t<A::name == "aggregate">* = nullptr,
+  std::enable_if_t<traits::is_pipe_operator<P>::value>* = nullptr>
 inline decltype(auto) operator | (Parent&& parent, Args&& args) {
-  return Aggregate<Parent, Args>{
+  return Aggregate<P, A>{
     std::forward<Parent>(parent), std::forward<Args>(args)
   }.execute();
 }

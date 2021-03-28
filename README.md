@@ -112,6 +112,8 @@ For point 3, it is typically what we hope the compiler will optimize for us, i.e
 + Optimization: Improve parallel operators:
    + Thread sharing among different parallel operators
    + Data exchange among different parallel operators
++ Code simplification
+   + Unify different result cases in partition() and parallel()
 
 ## Useful links
 + [Operator List](https://github.com/zzxx-husky/cpp-collection-api/wiki/OperatorList), which lists all the operators in `coll`.

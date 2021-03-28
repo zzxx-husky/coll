@@ -44,11 +44,13 @@ inline auto min() {
 }
 
 template<typename Parent, typename Args,
-  std::enable_if_t<Args::name == "minmax">* = nullptr,
-  std::enable_if_t<traits::is_pipe_operator<Parent>::value>* = nullptr>
+  typename P = traits::remove_cvr_t<Parent>,
+  typename A = traits::remove_cvr_t<Args>,
+  std::enable_if_t<A::name == "minmax">* = nullptr,
+  std::enable_if_t<traits::is_pipe_operator<P>::value>* = nullptr>
 inline auto operator | (Parent&& parent, Args&& args) {
-  using InputType = typename traits::remove_cvr_t<Parent>::OutputType;
-  using ResultType = std::conditional_t<Args::use_ref,
+  using InputType = typename P::OutputType;
+  using ResultType = std::conditional_t<A::use_ref,
     Reference<typename traits::remove_vr_t<InputType>>,
     std::optional<typename traits::remove_cvr_t<InputType>>
   >;
@@ -93,15 +95,18 @@ inline auto sum() {
  * non empty coll_operator + init val => some(add elems to the init val)
  **/
 template<typename Parent, typename Args,
-  std::enable_if_t<Args::name == "sum">* = nullptr,
-  std::enable_if_t<traits::is_pipe_operator<Parent>::value>* = nullptr>
+  typename P = traits::remove_cvr_t<Parent>,
+  typename A = traits::remove_cvr_t<Args>,
+  std::enable_if_t<"sum" == A::name>* = nullptr, // compilation failure with unknown reason
+  // std::enable_if_t<traits::match_template<A, SumArgs>::value>* = nullptr,
+  std::enable_if_t<traits::is_pipe_operator<P>::value>* = nullptr>
 inline auto operator | (Parent&& parent, Args&& args) {
-  if constexpr (args.has_init_val) {
+  if constexpr (Args::has_init_val) {
     return std::make_optional(
       parent | aggregate(std::move(args.init_val), args.add)
     );
   } else {
-    using InputType = typename traits::remove_cvr_t<Parent>::OutputType;
+    using InputType = typename P::OutputType;
     using ElemType = typename traits::remove_cvr_t<InputType>;
     auto add = [&](auto& opt, auto&& e) {
       if (likely(bool(opt))) {
@@ -138,7 +143,7 @@ inline AvgArgs<Add> avg(Add add) {
 }
 
 inline auto avg() {
-  return avg([](auto& a, auto& b) { a += b; });
+  return avg([](auto& a, auto&& b) { a += b; });
 }
 
 /**
@@ -148,10 +153,12 @@ inline auto avg() {
  * non empty coll_operator + init val => some(add elems to the init val)
  **/
 template<typename Parent, typename Args,
-  std::enable_if_t<Args::name == "avg">* = nullptr,
-  std::enable_if_t<traits::is_pipe_operator<Parent>::value>* = nullptr>
+  typename P = traits::remove_cvr_t<Parent>,
+  typename A = traits::remove_cvr_t<Args>,
+  std::enable_if_t<A::name == "avg">* = nullptr,
+  std::enable_if_t<traits::is_pipe_operator<P>::value>* = nullptr>
 inline auto operator | (Parent&& parent, Args&& args) {
-  if constexpr (args.has_init_val) {
+  if constexpr (Args::has_init_val) {
     size_t count = 0;
     auto add = [&](auto&& a, auto&& v) {
       args.add(std::forward<decltype(a)>(a), std::forward<decltype(v)>(v));
@@ -160,7 +167,7 @@ inline auto operator | (Parent&& parent, Args&& args) {
     auto agg = parent | aggregate(std::move(args.init_val), add);
     return std::make_optional(agg /= count);
   } else {
-    using InputType = typename traits::remove_cvr_t<Parent>::OutputType;
+    using InputType = typename P::OutputType;
     using ElemType = typename traits::remove_cvr_t<InputType>;
     size_t count = 0;
     auto add = [&](auto& opt, auto&& e) {

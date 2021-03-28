@@ -5,7 +5,7 @@
 namespace coll {
 template<typename ContainerBuilder, bool CopyOrMove>
 struct ToArgs {
-  constexpr static std::string_view name = "to";
+  inline constexpr static std::string_view name = "to";
   // 1. a container copy;
   // 2. a reference to an existing container
   // 3. a builder that constructs a new container
@@ -23,12 +23,6 @@ struct ToArgs {
   constexpr static bool is_container_ref =
     // Note: no 'const T&' appear here, only T&
     std::is_lvalue_reference<ContainerBuilder>::value;
-
-  template<typename Input>
-  using ContainerType = decltype(
-    std::declval<ToArgs<ContainerBuilder, CopyOrMove>&>()
-      .template get_container<Input>()
-  );
 
   template<typename Input, typename Elem = traits::remove_cvr_t<Input>>
   decltype(auto) get_container() {
@@ -116,10 +110,12 @@ struct To {
 };
 
 template<typename Parent, typename Args,
-  std::enable_if_t<Args::name == "to">* = nullptr,
-  std::enable_if_t<traits::is_pipe_operator<Parent>::value>* = nullptr>
+  typename P = traits::remove_cvr_t<Parent>,
+  typename A = traits::remove_cvr_t<Args>,
+  std::enable_if_t<A::name == "to">* = nullptr,
+  std::enable_if_t<traits::is_pipe_operator<P>::value>* = nullptr>
 inline decltype(auto)
 operator | (Parent&& parent, Args&& args) {
-  return To<Parent, Args>{std::forward<Parent>(parent), std::forward<Args>(args)}.execute();
+  return To<P, A>{std::forward<Parent>(parent), std::forward<Args>(args)}.execute();
 }
 } // namespace coll

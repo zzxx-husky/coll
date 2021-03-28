@@ -99,9 +99,7 @@ struct Flatmap {
         }
       } else /* if constexpr (IsCollOperator) */ {
         args.mapper(std::forward<InputType>(e))
-          | foreach([&](auto&& e) {
-              Child::process(std::forward<decltype(e)>(e));
-            });
+          | foreach(std::bind(&Child::process, this, std::placeholders::_1));
       }
     }
   };
@@ -115,11 +113,13 @@ struct Flatmap {
 };
 
 template<typename Parent, typename Args,
-  std::enable_if_t<Args::name == "flatmap">* = nullptr,
-  std::enable_if_t<traits::is_pipe_operator<Parent>::value>* = nullptr>
-inline Flatmap<Parent, Args>
+  typename P = traits::remove_cvr_t<Parent>,
+  typename A = traits::remove_cvr_t<Args>,
+  std::enable_if_t<A::name == "flatmap">* = nullptr,
+  std::enable_if_t<traits::is_pipe_operator<P>::value>* = nullptr>
+inline Flatmap<P, A>
 operator | (Parent&& parent, Args&& args) {
-  static_assert(!std::is_same<typename Flatmap<Parent, Args>::OutputType, NullArg>::value,
+  static_assert(!std::is_same<typename Flatmap<P, A>::OutputType, NullArg>::value,
     "Return value of lambda of flatmap is not an iterable or a coll operator.");
   return {std::forward<Parent>(parent), std::forward<Args>(args)};
 }

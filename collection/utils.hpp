@@ -6,6 +6,9 @@
 #define auto_val(x, y) decltype(y) x = y;
 #define auto_ref(x, y) std::remove_reference_t<decltype(y)>& x = y;
 
+#define auto_val2(A, x, y) decltype(std::declval<A&>().y) x = y;
+#define auto_ref2(A, x, y) std::remove_reference_t<decltype(std::declval<A&>().y)>& x = y;
+
 namespace coll {
 // a struct storing type information
 template<typename T>

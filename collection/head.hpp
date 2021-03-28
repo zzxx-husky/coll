@@ -56,10 +56,12 @@ struct Head {
 };
 
 template<typename Parent, typename Args,
-  std::enable_if_t<Args::name == "head">* = nullptr,
-  std::enable_if_t<traits::is_pipe_operator<Parent>::value>* = nullptr>
+  typename P = traits::remove_cvr_t<Parent>,
+  typename A = traits::remove_cvr_t<Args>,
+  std::enable_if_t<A::name == "head">* = nullptr,
+  std::enable_if_t<traits::is_pipe_operator<P>::value>* = nullptr>
 inline decltype(auto) operator | (Parent&& parent, Args&& args) {
-  return Head<Parent, Args>{std::forward<Parent>(parent), std::forward<Args>(args)}.head();
+  return Head<P, A>{std::forward<Parent>(parent), std::forward<Args>(args)}.head();
 }
 } // namespace coll
 

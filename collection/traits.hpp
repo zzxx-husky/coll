@@ -101,6 +101,12 @@ template<typename T, typename E>
 std::false_type is_builder_impl(...);
 } // namespace details
 
+template<typename T, template <typename ...> class U>
+struct match_template : std::false_type {};
+
+template<template <typename ...> class U, typename ... X>
+struct match_template<U<X...>, U> : std::true_type {};
+
 template<typename T>
 using is_iterator = decltype(details::is_iterator_impl<T>(0));
 

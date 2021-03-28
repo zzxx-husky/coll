@@ -30,12 +30,6 @@ struct DistinctArgs {
     traits::remove_cvr_t<Input>
   >;
 
-  template<typename Input>
-  using SetType = decltype(
-    std::declval<DistinctArgs<SetBuilder, Inserter, CacheByRef>&>()
-      .template make_set<Input>()
-  );
-
   template<typename Input, typename Elem = ElemType<Input>>
   inline decltype(auto) make_set() {
     if constexpr (traits::is_builder<SetBuilder, Elem>::value) {
@@ -115,9 +109,11 @@ struct Distinct {
 };
 
 template<typename Parent, typename Args,
-  std::enable_if_t<Args::name == "distinct">* = nullptr,
-  std::enable_if_t<traits::is_pipe_operator<Parent>::value>* = nullptr>
-inline Distinct<Parent, Args>
+  typename P = traits::remove_cvr_t<Parent>,
+  typename A = traits::remove_cvr_t<Args>,
+  std::enable_if_t<A::name == "distinct">* = nullptr,
+  std::enable_if_t<traits::is_pipe_operator<P>::value>* = nullptr>
+inline Distinct<P, A>
 operator | (Parent&& parent, Args&& args) {
   return {std::forward<Parent>(parent), std::forward<Args>(args)};
 }

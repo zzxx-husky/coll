@@ -69,11 +69,11 @@ public:
   }
 
   auto& operator[](size_t idx) {
-    return get_by_abs_idx(idx + start_idx);
+    return get_by_abs_idx(idx + start_idx - num_elems);
   }
 
   const auto& operator[](size_t idx) const {
-    return get_by_abs_idx(idx + start_idx);
+    return get_by_abs_idx(idx + start_idx - num_elems);
   }
 
   template<typename OwnerType>

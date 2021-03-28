@@ -47,12 +47,6 @@ template<
     traits::remove_cvr_t<Input>
   >;
 
-  template<typename Input>
-  using BufferType = decltype(
-    std::declval<ReverseArgs<BufferBuilder, CacheByRef>&>()
-      .template get_buffer<Input>()
-  );
-
   template<typename Input, typename Elem = ElemType<Input>>
   inline decltype(auto) get_buffer() {
     if constexpr (std::is_same<BufferBuilder, NullArg>::value) {
@@ -66,7 +60,7 @@ template<
   }
 };
 
-ReverseArgs<> reverse() { return {}; }
+inline ReverseArgs<> reverse() { return {}; }
 
 template<typename Parent, typename Args>
 struct Reverse {
@@ -143,9 +137,11 @@ struct Reverse {
 };
 
 template<typename Parent, typename Args,
-  std::enable_if_t<Args::name == "reverse">* = nullptr,
-  std::enable_if_t<traits::is_pipe_operator<Parent>::value>* = nullptr>
-inline Reverse<Parent, Args>
+  typename P = traits::remove_cvr_t<Parent>,
+  typename A = traits::remove_cvr_t<Args>,
+  std::enable_if_t<A::name == "reverse">* = nullptr,
+  std::enable_if_t<traits::is_pipe_operator<P>::value>* = nullptr>
+inline Reverse<P, A>
 operator | (Parent&& parent, Args&& args) {
   return {std::forward<Parent>(parent), std::forward<Args>(args)};
 }

@@ -5,6 +5,7 @@
 #include <array>
 #include <iterator>
 
+#include "base.hpp"
 #include "lambda.hpp"
 #include "traits.hpp"
 // source
@@ -37,6 +38,9 @@
 #include "last.hpp"
 #include "print.hpp"
 #include "to.hpp"
+#include "to_std_containers.hpp"
+// others
+#include "shuffle_strategy.hpp"
 
 namespace coll {
 template<typename Iter,

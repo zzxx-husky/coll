@@ -64,10 +64,11 @@ struct PostPlaceHolder {
 };
 
 template<typename Parent, typename ChildExecution,
-  std::enable_if_t<traits::is_pipe_operator<Parent>::value>* = nullptr,
+  typename P = traits::remove_cvr_t<Parent>,
+  std::enable_if_t<traits::is_pipe_operator<P>::value>* = nullptr,
   std::enable_if_t<traits::is_execution<ChildExecution>::value>* = nullptr>
 inline decltype(auto) operator | (Parent&& parent, ChildExecution&& exec) {
-  return PostPlaceHolder<Parent, ChildExecution>{
+  return PostPlaceHolder<P, ChildExecution>{
     std::forward<Parent>(parent),
     std::forward<ChildExecution>(exec)
   }.execute();

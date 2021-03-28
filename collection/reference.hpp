@@ -94,7 +94,7 @@ inline bool operator==(const optional<T&>& a, const optional<T&>& b) {
 
 template<typename T>
 struct hash<optional<T&>> {
-  inline size_t operator()(const optional<T&>& r) {
+  inline size_t operator()(const optional<T&>& r) const {
     return std::hash<T>{}(*r);
   }
 };

@@ -78,15 +78,9 @@ struct GroupBy {
   >;
 
   template<typename Input, typename Elem = RefOrVal<Input>>
-  inline constexpr bool is_builder() const {
+  inline static constexpr bool is_builder() {
     return traits::is_builder<Aggregator, Elem>::value;
   }
-
-  template<typename Input>
-  using AggregatorType = decltype(
-    std::declval<GroupBy<KeyBy, ValueBy, Aggregator, AggregateTo, CacheByRef, Adjacenct>&>()
-      .template get_aggregator<Input>()
-  );
 
   template<typename Input, typename Elem = RefOrVal<Input>>
   inline decltype(auto) get_aggregator() {
@@ -108,13 +102,15 @@ inline auto groupby() {
 }
 
 template<typename Parent, typename Args,
-  std::enable_if_t<Args::name == "groupby" && !Args::is_adjacent>* = nullptr,
-  std::enable_if_t<traits::is_pipe_operator<Parent>::value>* = nullptr>
+  typename P = traits::remove_cvr_t<Parent>,
+  typename A = traits::remove_cvr_t<Args>,
+  std::enable_if_t<A::name == "groupby" && !Args::is_adjacent>* = nullptr,
+  std::enable_if_t<traits::is_pipe_operator<P>::value>* = nullptr>
 inline auto operator | (Parent&& parent, Args&& args) {
-  using InputType = typename traits::remove_cvr_t<Parent>::OutputType;
-  using KeyType = typename Args::template KeyType<InputType>;
-  using AggregatorType = typename Args::template AggregatorType<InputType>;
-  if constexpr (args.template is_builder<InputType>()) {
+  using InputType = typename P::OutputType;
+  using KeyType = typename A::template KeyType<InputType>;
+  using AggregatorType = decltype(std::declval<A&>().template get_aggregator<InputType>());
+  if constexpr (A::template is_builder<InputType>()) {
     return parent | aggregate(std::unordered_map<KeyType, AggregatorType>(),
                       [&](auto& map, InputType e) {
                         auto&& key = args.keyby(e);
@@ -134,9 +130,11 @@ inline auto operator | (Parent&& parent, Args&& args) {
 
 // Override for adjacenct groupby
 template<typename Parent, typename Args,
-  std::enable_if_t<Args::name == "groupby" && Args::is_adjacent>* = nullptr,
-  std::enable_if_t<traits::is_pipe_operator<Parent>::value>* = nullptr>
-inline GroupByAdjacent<Parent, Args>
+  typename P = traits::remove_cvr_t<Parent>,
+  typename A = traits::remove_cvr_t<Args>,
+  std::enable_if_t<A::name == "groupby" && A::is_adjacent>* = nullptr,
+  std::enable_if_t<traits::is_pipe_operator<P>::value>* = nullptr>
+inline GroupByAdjacent<P, A>
 operator | (Parent&& parent, Args&& args) {
   return {std::forward<Parent>(parent), std::forward<Args>(args)};
 }

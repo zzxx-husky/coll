@@ -48,7 +48,7 @@ int main() {
 
                     if (capture.first[0] == 'c') {
                       // with mutable
-                      name.seekp(name.tellp() - 5);
+                      name.seekp(name.tellp() - std::streamoff(5));
                       name << "m(...)";
                       out << " mutable";
                       std::cout << "#define "

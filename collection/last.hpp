@@ -55,9 +55,11 @@ struct Last {
 inline LastArgs<false> last() { return {}; }
 
 template<typename Parent, typename Args,
-  std::enable_if_t<Args::name == "last">* = nullptr,
-  std::enable_if_t<traits::is_pipe_operator<Parent>::value>* = nullptr>
+  typename P = traits::remove_cvr_t<Parent>,
+  typename A = traits::remove_cvr_t<Args>,
+  std::enable_if_t<A::name == "last">* = nullptr,
+  std::enable_if_t<traits::is_pipe_operator<P>::value>* = nullptr>
 inline decltype(auto) operator | (Parent&& parent, Args&& args) {
-  return Last<Parent, Args>{std::forward<Parent>(parent), std::forward<Args>(args)}.last();
+  return Last<P, A>{std::forward<Parent>(parent), std::forward<Args>(args)}.last();
 }
 } // namespace coll

@@ -21,12 +21,6 @@ struct SplitArgs {
   cache_by_ref() { return {}; }
 
   // used by operator
-  template<typename Input>
-  using ContainerType = decltype(
-    std::declval<SplitArgs<Condition, ContainerBuilder, CacheByRef>&>()
-      .template make_container<Input>()
-  );
-
   template<typename Input, typename Elem = traits::remove_cvr_t<Input>>
   inline decltype(auto) make_container() {
     if constexpr (traits::is_builder<ContainerBuilder, Elem>::value) {
@@ -40,7 +34,7 @@ struct SplitArgs {
 template<typename Parent, typename Args>
 struct Split {
   using InputType = typename Parent::OutputType;
-  using OutputType = typename Args::template ContainerType<InputType>&;
+  using OutputType = decltype(std::declval<Args>().template make_container<InputType>());
 
   Parent parent;
   Args args;
@@ -110,9 +104,11 @@ inline auto split(Condition condition) {
 }
 
 template<typename Parent, typename Args,
-  std::enable_if_t<Args::name == "split">* = nullptr,
-  std::enable_if_t<traits::is_pipe_operator<Parent>::value>* = nullptr>
-inline Split<Parent, Args>
+  typename P = traits::remove_cvr_t<Parent>,
+  typename A = traits::remove_cvr_t<Args>,
+  std::enable_if_t<A::name == "split">* = nullptr,
+  std::enable_if_t<traits::is_pipe_operator<P>::value>* = nullptr>
+inline Split<P, A>
 operator | (Parent&& parent, Args&& args) {
   return {std::forward<Parent>(parent), std::forward<Args>(args)};
 }

@@ -9,117 +9,11 @@
 #include "utils.hpp"
 
 namespace coll {
-template<
-  typename BufferBuilder = NullArg,
-  typename Comparator = NullArg,
-  bool CacheByRef = false,
-  bool Reverse = false
-> struct SortArgs {
-  static constexpr std::string_view name = "sort";
-
-  // members
-  BufferBuilder buffer_builder; // to be sorted by `std::sort`.
-  Comparator comparator;
-
-  // used by user
-  inline SortArgs<BufferBuilder, Comparator, true, Reverse>
-  cache_by_ref() {
-    return {
-      std::forward<BufferBuilder>(buffer_builder),
-      std::forward<Comparator>(comparator)
-    };
-  }
-
-  template<typename AnotherComparator>
-  inline SortArgs<BufferBuilder, AnotherComparator, CacheByRef, Reverse>
-  by(AnotherComparator&& another_comparator) {
-    return {
-      std::forward<BufferBuilder>(buffer_builder),
-      std::forward<AnotherComparator>(another_comparator)
-    };
-  }
-
-  template<typename AnotherBufferBuilder>
-  inline SortArgs<AnotherBufferBuilder, Comparator, CacheByRef, Reverse>
-  buffer(AnotherBufferBuilder&& another_builder) {
-    return {std::forward<AnotherBufferBuilder>(another_builder)};
-  }
-
-  template<template <typename ...> class AnotherBufferTemplate>
-  inline auto buffer() {
-    return buffer([](/* Type<> */ auto type) {
-      return AnotherBufferTemplate<typename decltype(type)::type>{};
-    });
-  }
-
-  inline SortArgs<BufferBuilder, Comparator, CacheByRef, true>
-  reverse() {
-    return {
-      std::forward<BufferBuilder>(buffer_builder),
-      std::forward<Comparator>(comparator)
-    };
-  }
-
-  // used by operator
-  constexpr static bool is_cache_by_ref = CacheByRef;
-
-  template<typename Input, bool ControlReverse,
-    bool IsComparator = traits::is_invocable<Comparator, Input, Input>::value,
-    bool IsMapper = traits::is_invocable<Comparator, Input>::value,
-    bool IsNullArg = std::is_same<Comparator, NullArg>::value>
-  inline auto get_comparator() {
-    static_assert(IsComparator || IsMapper || IsNullArg,
-      "Invalid user-defined comparator for Sort operator.");
-
-    if constexpr (IsComparator) {
-      if constexpr (Reverse != ControlReverse) {
-        return [=](const auto& a, const auto& b) { return comparator(b, a); };
-      } else {
-        return comparator;
-      }
-    } else if constexpr (IsMapper) {
-      if constexpr (Reverse != ControlReverse) {
-        return [=](const auto& a, const auto& b) { return comparator(b) < comparator(a); };
-      } else {
-        return [=](const auto& a, const auto& b) { return comparator(a) < comparator(b); };
-      }
-    } else /* if constexpr (IsNullArg) */ {
-      if constexpr (Reverse != ControlReverse) {
-        return [](const auto& a, const auto& b) { return b < a; };
-      } else {
-        return [](const auto& a, const auto& b) { return a < b; };
-      }
-    }
-  }
-
-  template<typename Input>
-  using BufferType = decltype(
-    std::declval<SortArgs<BufferBuilder, Comparator, CacheByRef, Reverse>&>()
-      .template get_buffer<Input>()
-  );
-
-  template<typename Input,
-    typename Elem = std::conditional_t<CacheByRef,
-      Reference<traits::remove_vr_t<Input>>,
-      traits::remove_cvr_t<Input>
-  >> inline decltype(auto) get_buffer() {
-    if constexpr (std::is_same<BufferBuilder, NullArg>::value) {
-      return std::vector<Elem>{};
-    } else if constexpr (traits::is_builder<BufferBuilder, Elem>::value) {
-      return buffer_builder(Type<Elem>{});
-    } else {
-      return buffer_builder;
-    }
-  }
-};
-
-inline SortArgs<> sort() { return {}; }
-
 template<typename Parent, typename Args>
 struct Sort {
   using InputType = typename Parent::OutputType;
   using OutputType = InputType;
-  using BufferType = typename Args::template BufferType<InputType>;
+  // using BufferType = decltype(std::declval<Args&>().template get_buffer<InputType>());
 
   Parent parent;
   Args args;
@@ -177,12 +71,111 @@ struct Sort {
   }
 };
 
-template<typename Operator, typename Args,
-  typename Parent = traits::remove_cvr_t<Operator>,
-  std::enable_if_t<Args::name == "sort">* = nullptr,
-  std::enable_if_t<traits::is_pipe_operator<Parent>::value>* = nullptr>
-inline Sort<Parent, Args>
-operator | (Operator&& parent, Args&& args) {
-  return {std::forward<Operator>(parent), std::forward<Args>(args)};
+template<
+  typename Comparator = NullArg,
+  typename BufferBuilder = NullArg,
+  bool CacheByRef = false,
+  bool Reverse = false
+> struct SortArgs {
+  constexpr static std::string_view name = "sort";
+
+  // members
+  Comparator comparator;
+  BufferBuilder buffer_builder; // to be sorted by `std::sort`.
+
+  // used by user
+  inline SortArgs<Comparator, BufferBuilder, true, Reverse>
+  cache_by_ref() {
+    return {
+      std::forward<Comparator>(comparator),
+      std::forward<BufferBuilder>(buffer_builder)
+    };
+  }
+
+  template<typename AnotherBufferBuilder>
+  inline SortArgs<Comparator, AnotherBufferBuilder, CacheByRef, Reverse>
+  buffer(AnotherBufferBuilder&& another_builder) {
+    return {
+      std::forward<Comparator>(comparator),
+      std::forward<AnotherBufferBuilder>(another_builder)
+    };
+  }
+
+  template<template <typename ...> class AnotherBufferTemplate>
+  inline auto buffer() {
+    return buffer([](/* Type<> */ auto type) {
+      return AnotherBufferTemplate<typename decltype(type)::type>{};
+    });
+  }
+
+  inline SortArgs<Comparator, BufferBuilder, CacheByRef, true>
+  reverse() {
+    return {
+      std::forward<Comparator>(comparator),
+      std::forward<BufferBuilder>(buffer_builder)
+    };
+  }
+
+  // used by operator
+  constexpr static bool is_cache_by_ref = CacheByRef;
+
+  template<typename Input, bool ControlReverse,
+    bool IsComparator = traits::is_invocable<Comparator, Input, Input>::value,
+    bool IsMapper = traits::is_invocable<Comparator, Input>::value,
+    bool IsNullArg = std::is_same<Comparator, NullArg>::value>
+  inline auto get_comparator() {
+    static_assert(IsComparator || IsMapper || IsNullArg,
+      "Invalid user-defined comparator for Sort operator.");
+
+    if constexpr (IsComparator) {
+      if constexpr (Reverse != ControlReverse) {
+        return [=](const auto& a, const auto& b) { return comparator(b, a); };
+      } else {
+        return comparator;
+      }
+    } else if constexpr (IsMapper) {
+      if constexpr (Reverse != ControlReverse) {
+        return [=](const auto& a, const auto& b) { return comparator(b) < comparator(a); };
+      } else {
+        return [=](const auto& a, const auto& b) { return comparator(a) < comparator(b); };
+      }
+    } else /* if constexpr (IsNullArg) */ {
+      if constexpr (Reverse != ControlReverse) {
+        return [](const auto& a, const auto& b) { return b < a; };
+      } else {
+        return [](const auto& a, const auto& b) { return a < b; };
+      }
+    }
+  }
+
+  template<typename Input,
+    typename Elem = std::conditional_t<CacheByRef,
+      Reference<traits::remove_vr_t<Input>>,
+      traits::remove_cvr_t<Input>
+  >> inline decltype(auto) get_buffer() {
+    if constexpr (std::is_same<BufferBuilder, NullArg>::value) {
+      return std::vector<Elem>{};
+    } else if constexpr (traits::is_builder<BufferBuilder, Elem>::value) {
+      return buffer_builder(Type<Elem>{});
+    } else {
+      return buffer_builder;
+    }
+  }
+};
+
+inline SortArgs<> sort() { return {}; }
+
+template<typename Comparator>
+inline SortArgs<Comparator> sort(Comparator&& comparator) {
+  return { std::forward<Comparator>(comparator) };
+}
+
+template<typename Parent, typename Args,
+  typename P = traits::remove_cvr_t<Parent>,
+  typename A = traits::remove_cvr_t<Args>,
+  std::enable_if_t<traits::is_pipe_operator<P>::value>* = nullptr,
+  std::enable_if_t<A::name == "sort">* = nullptr>
+inline Sort<P, A> operator | (Parent&& parent, Args&& args) {
+  return {std::forward<Parent>(parent), std::forward<Args>(args)};
 }
 } // namespace coll

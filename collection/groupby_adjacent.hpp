@@ -9,7 +9,7 @@ template<typename Parent, typename Args>
 struct GroupByAdjacent {
   using InputType = typename traits::remove_cvr_t<Parent>::OutputType;
   using KeyType = typename Args::template KeyType<InputType>;
-  using AggregatorType = typename Args::template AggregatorType<InputType>;
+  using AggregatorType = decltype(std::declval<Args&>().template get_aggregator<InputType>());
   using OutputType = std::pair<KeyType, AggregatorType>;
 
   Parent parent;

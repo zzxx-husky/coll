@@ -43,11 +43,11 @@ struct Partition {
       Child(std::forward<X>(x)...) {
     }
 
-    auto construct_partition_pipeline(const KeyType& const_key) {
+    static auto construct_partition_pipeline(Args& args, const KeyType& const_key, Child* child) {
       if constexpr (IsPipeOperator) {
         return args.pipeline_builder(const_key, place_holder<InputType>())
-          | foreach([&](auto&& e) {
-              this->Child::process(std::forward<decltype(e)>(e));
+          | foreach([child](auto&& e) {
+              child->process(std::forward<decltype(e)>(e));
             });
       } else {
         return args.pipeline_builder(const_key, place_holder<InputType>());
@@ -56,7 +56,7 @@ struct Partition {
 
     static auto construct_partition_map(Args& args) {
       if constexpr (IsPipeOperator) {
-        using ExecType = decltype(std::declval<Execution<Child>&>().construct_partition_pipeline(std::declval<const KeyType&>()));
+        using ExecType = decltype(construct_partition_pipeline(std::declval<Args&>(), std::declval<const KeyType&>(), std::declval<Child*>()));
         return args.template make_partition_map<KeyType, ExecType>();
       } else {
         return args.template make_partition_map<KeyType, PipelineType>();
@@ -64,6 +64,7 @@ struct Partition {
     }
 
     Args args;
+    Child* child = this;
     auto_val(partition_map, construct_partition_map(args));
 
     inline void process(InputType e) {
@@ -71,7 +72,7 @@ struct Partition {
       auto iter = partition_map.find(key);
       if (iter == partition_map.end()) {
         const auto& const_key = key;
-        iter = partition_map.emplace(key, construct_partition_pipeline(const_key)).first;
+        iter = partition_map.emplace(key, construct_partition_pipeline(args, const_key, child)).first;
         // end when created
         if (unlikely(iter->second.control.break_now)) {
           end_partition(key, iter->second);
@@ -124,9 +125,12 @@ struct Partition {
 };
 
 template<typename Parent, typename Args,
-  std::enable_if_t<Args::name == "partition" && !Args::is_parallel>* = nullptr,
-  std::enable_if_t<traits::is_pipe_operator<Parent>::value>* = nullptr>
-inline Partition<Parent, Args>
+  typename A = traits::remove_cvr_t<Args>,
+  // std::enable_if_t<A::name == "partition">* = nullptr,
+  std::enable_if_t<traits::match_template<A, PartitionArgs>::value>* = nullptr,
+  typename P = traits::remove_cvr_t<Parent>,
+  std::enable_if_t<traits::is_pipe_operator<P>::value>* = nullptr>
+inline Partition<P, A>
 operator | (Parent&& parent, Args&& args) {
   return { std::forward<Parent>(parent), std::forward<Args>(args) };
 }

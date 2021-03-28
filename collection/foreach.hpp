@@ -44,10 +44,12 @@ struct ForeachExecution : public ExecutionBase {
 };
 
 template<typename Parent, typename Args,
-  std::enable_if_t<Args::name == "foreach">* = nullptr,
-  std::enable_if_t<traits::is_pipe_operator<Parent>::value>* = nullptr>
+  typename P = traits::remove_cvr_t<Parent>,
+  typename A = traits::remove_cvr_t<Args>,
+  std::enable_if_t<A::name == "foreach">* = nullptr,
+  std::enable_if_t<traits::is_pipe_operator<P>::value>* = nullptr>
 inline decltype(auto) operator | (Parent&& parent, Args&& args) {
-  using Input = typename traits::remove_cvr_t<Parent>::OutputType;
+  using Input = typename P::OutputType;
   return parent.template wrap<ForeachExecution<Args, Input>, Args&>(args);
 }
 } // namespace coll

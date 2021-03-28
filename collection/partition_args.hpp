@@ -7,39 +7,23 @@ namespace coll {
 template<
   typename PipelineBuilder,
   typename PartitionMapBuilder,
-  typename KeyBy = Identity::type,
-  bool Parallel = false
+  typename KeyBy = Identity::type
 > struct PartitionArgs {
   constexpr static std::string_view name = "partition";
 
   PipelineBuilder pipeline_builder;
   PartitionMapBuilder partition_map_builder;
   KeyBy keyby = Identity::value;
-  const size_t num_threads = 0;
-  const size_t queue_length = 0;
 
   template<typename AnotherKeyBy>
-  inline PartitionArgs<PipelineBuilder, PartitionMapBuilder, AnotherKeyBy, Parallel>
+  inline PartitionArgs<PipelineBuilder, PartitionMapBuilder, AnotherKeyBy>
   by(AnotherKeyBy&& another_keyby) {
     return {
       std::forward<PipelineBuilder>(pipeline_builder),
       std::forward<PartitionMapBuilder>(partition_map_builder),
-      std::forward<AnotherKeyBy>(another_keyby),
-      num_threads, queue_length
+      std::forward<AnotherKeyBy>(another_keyby)
     };
   }
-
-  inline PartitionArgs<PipelineBuilder, PartitionMapBuilder, KeyBy, true>
-  parallel(size_t num_threads, size_t queue_length = 100) {
-    return {
-      std::forward<PipelineBuilder>(pipeline_builder),
-      std::forward<PartitionMapBuilder>(partition_map_builder),
-      std::forward<KeyBy>(keyby),
-      num_threads, queue_length
-    };
-  }
-
-  constexpr static bool is_parallel = Parallel;
 
   template<typename Input>
   using KeyType = traits::remove_cvr_t<
@@ -78,7 +62,7 @@ inline auto partition(PipelineBuilder&& pipeline_builder) {
 }
 
 template<typename PipelineBuilder>
-inline auto partition(PipelineBuilder&& partition_map_builder) {
-  return partition<std::unordered_map>(std::forward<PipelineBuilder>(partition_map_builder));
+inline auto partition(PipelineBuilder&& builder) {
+  return partition<std::unordered_map>(std::forward<PipelineBuilder>(builder));
 }
 } // namespace coll

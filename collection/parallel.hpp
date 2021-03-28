@@ -1,33 +1,65 @@
 #pragma once
 
-#include <iostream>
-#include <thread>
 #include <vector>
 
 #include "base.hpp"
 #include "place_holder.hpp"
-#include "queue.hpp"
+#include "shuffle_strategy.hpp"
 #include "utils.hpp"
 
 #include "foreach.hpp"
 
 namespace coll {
-template<typename PipelineBuilder>
+namespace parallel_utils {
+static zaf::ActorSystem actor_system;
+} // namespace parallel_utils
+
+template<typename PipelineBuilder, typename ShuffleStrat>
 struct ParallelArgs {
   constexpr static std::string_view name = "parallel";
 
-  size_t num_threads;
+  template<typename I>
+  using ShuffleStratType = typename ShuffleStrat::template type<I>;
+
+  // the controls the number of actors that process the data
+  size_t parallelism;
+  // the builder that builds the logic for processing the data
   PipelineBuilder pipeline_builder;
+  ShuffleStrat shuffle_strategy;
+  zaf::ActorGroup* actor_group = nullptr;
 
   template<typename Input>
   using PipelineType = typename traits::invocation<
     PipelineBuilder, size_t, PlaceHolder<Input>
   >::result_t;
+
+  zaf::ActorGroup& get_actor_group() {
+    if (!actor_group) {
+      return parallel_utils::actor_system;
+    }
+    return *actor_group;
+  }
+
+  auto& execute_by(zaf::ActorGroup& group) {
+    actor_group = &group;
+    return *this;
+  }
+
+  template<typename NewShuffleStrat>
+  ParallelArgs<PipelineBuilder, NewShuffleStrat> shuffle_by(NewShuffleStrat&& strat) {
+    return {
+      parallelism,
+      pipeline_builder,
+      std::forward<NewShuffleStrat>(strat),
+      actor_group
+    };
+  }
 };
 
 template<typename PipelineBuilder>
-ParallelArgs<PipelineBuilder> parallel(size_t num_threads, PipelineBuilder builder) {
-  return {num_threads, builder};
+ParallelArgs<PipelineBuilder, shuffle::OnDemandAssign>
+parallel(size_t parallelism, PipelineBuilder builder) {
+  return {parallelism, builder, shuffle::OnDemandAssign{}};
 }
 
 /**
@@ -38,12 +70,12 @@ ParallelArgs<PipelineBuilder> parallel(size_t num_threads, PipelineBuilder build
  * 3. The pipeline ends with a pipe operator
  *    + Parallel outputs every elements at the end of the pipeline
  *
- * If the threads `end` by themselves, remaining inputs from the parents will be ignored
- * The effect of `end` from parent to the threads is carried out by swmr_queue
- * The effect of `end` from threads to child is carried out by mwsr_queue
+ * If the actors `end` by themselves, remaining inputs from the parents will be ignored
+ * The effect of `end` from parent to the actors is carried out by in_queue
+ * The effect of `end` from actors to child is carried out by out_queue
  *
- * The implementation uses an independent group of threads for execution. The threads are not shared with other parallel operators.
- * TODO(zzxx): support thread sharing
+ * The implementation uses an independent group of actors for execution. The actors are not shared with other parallel operators.
+ * TODO(zzxx): support actor sharing
  **/
 template<typename Parent, typename Args>
 struct Parallel {
@@ -61,8 +93,6 @@ struct Parallel {
                 /* IsSinkWithoutRes */ size_t
   >>;
 
-  using QueueOutputType = traits::remove_cvr_t<OutputType>;
-
   Parent parent;
   Args args;
 
@@ -72,107 +102,108 @@ struct Parallel {
     Execution(const Args& args, X&& ... x):
       args(args),
       Child(std::forward<X>(x)...) {
+      auto& actor_group = this->args.get_actor_group();
+      std::vector<zaf::Actor> executors(args.parallelism);
+      for (int i = 0; i < args.parallelism; i++) {
+        executors[i] = actor_group.template spawn<ParallelExecutor>(this->args, i);
+      }
+      shuffler.initialize(actor_group, executors);
     }
 
     Args args;
+    unsigned num_termination = 0;
+    auto_val(shuffler, args.shuffle_strategy.template create<QueueInputType>());
+    // typename Args::template ShuffleStratType<QueueInputType> shuffler = args.create();
 
-    // used for sending inputs to threads
-    SWMRQueue<QueueInputType> swmr_queue = [&]() {
-      SWMRQueue<QueueInputType> queue;
-      queue.resize(args.num_threads << 1);
-      return queue;
-    }();
+    struct ParallelExecutor : public zaf::ActorBehavior {
+      ParallelExecutor(Args& args, size_t pid):
+        args(args), pid(pid) {
+      }
 
-    // used for collecting outputs from threads
-    MWSRQueue<QueueOutputType> mwsr_queue = [&]() {
-      MWSRQueue<QueueOutputType> queue;
-      queue.resize(args.num_threads << 1);
-      return queue;
-    }();
-
-    std::atomic<unsigned> num_threads_alive{0};
-
-    std::vector<std::thread> threads = [&]() {
-      std::vector<std::thread> threads;
-      threads.reserve(args.num_threads);
-      for (int i = 0; i < args.num_threads; i++) {
-        auto&& e = [&]() -> decltype(auto) {
-          if constexpr (IsPipeOperator) {
-            return args.pipeline_builder(i, place_holder<QueueInputType&>())
-              | foreach([&](OutputType e) {
-                  mwsr_queue.push(std::forward<OutputType>(e));
-                });
-          } else {
-            return args.pipeline_builder(i, place_holder<QueueInputType&>());
-          }
-        }();
-        threads.emplace_back(
-          [this, pid = i, exec = std::forward<decltype(e)>(e)]() mutable {
-            for (bool pop_succ = true;
-                 pop_succ && !exec.control.break_now;) {
-              // either obtain an elem from the queue
-              // or block and wait for a new elem
-              // or unblock because the queue is `end`ed
-              pop_succ = swmr_queue.pop([&](QueueInputType& e) {
-                exec.process(e);
+      static auto ctor_partition_pipeline(Args& args, size_t pid,
+        zaf::ActorBehavior* this_actor, zaf::Actor& res_collector) {
+        if constexpr (IsPipeOperator) {
+          return args.pipeline_builder(pid, place_holder<QueueInputType&>())
+            | foreach([=, &res_collector](OutputType o) {
+                this_actor->send(res_collector, codes::Data, std::forward<OutputType>(o));
               });
-            }
-            exec.end();
-            if constexpr (IsSinkWithRes) {
-              mwsr_queue.push(std::make_pair(pid, exec.result()));
-            } else if constexpr (IsSinkWithoutRes) {
-              mwsr_queue.push(pid);
-            }
-            num_threads_alive.fetch_add(1, std::memory_order_release);
-          });
+        } else {
+          return args.pipeline_builder(pid, place_holder<QueueInputType&>());
+        }
       }
-      return threads;
-    }();
 
-    inline bool try_pop() {
-      if (mwsr_queue.not_empty()) {
-        mwsr_queue.pop([this](auto& e) {
-          this->Child::process(e);
-        });
-        return true;
+      Args& args;
+      size_t pid;
+      zaf::Actor res_collector;
+      zaf::ActorBehavior* this_actor = this;
+      auto_val(partition_pipeline, ctor_partition_pipeline(args, pid, this_actor, res_collector));
+
+      void terminate() {
+        partition_pipeline.end();
+        if constexpr (IsSinkWithRes) {
+          this->send(res_collector, codes::Data, std::make_pair(pid, partition_pipeline.result()));
+        } else if constexpr (IsSinkWithoutRes) {
+          this->send(res_collector, codes::Data, pid);
+        }
+        this->send(res_collector, codes::Termination);
+        this->deactivate();
       }
-      return false;
-    }
 
-    inline bool has_threads_alive() {
-      return num_threads_alive.load(std::memory_order_acquire) < args.num_threads;
+      zaf::MessageHandlers behavior() override {
+        return {
+          codes::Downstream - [this](zaf::Actor res_collector) {
+            this->res_collector = res_collector;
+          },
+          codes::Data - [this](QueueInputType& e) {
+            partition_pipeline.process(e);
+            if (partition_pipeline.control.break_now) {
+              terminate();
+            }
+          },
+          codes::Quota - [this](size_t w) {
+            this->reply(codes::Quota, w);
+          },
+          codes::DataWithQuota - [this](QueueInputType& e, size_t w) {
+            this->reply(codes::Quota, w);
+            partition_pipeline.process(e);
+            if (partition_pipeline.control.break_now) {
+              terminate();
+            }
+          },
+          codes::Termination - [this]() {
+            this->terminate();
+          }
+        };
+      }
+    };
+
+    zaf::MessageHandlers receive_handlers{
+      codes::Data - [=](OutputType&& o) {
+        this->Child::process(std::forward<OutputType>(o));
+      },
+      codes::Termination - [=]() {
+        this->num_termination++;
+      }
+    };
+
+    inline void receive_results(bool non_blocking) {
+      for (bool succ = true; succ && num_termination < args.parallelism;) {
+        succ = shuffler.receive(receive_handlers, non_blocking);
+      }
     }
 
     inline void process(InputType e) {
-      while (swmr_queue.is_full()) {
-        if (!try_pop()) {
-          if (!has_threads_alive()) {
-            this->control.break_now = true;
-            return;
-          }
-          std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        }
+      shuffler.dispatch(std::forward<InputType>(e));
+      receive_results(true);
+      if (num_termination == args.parallelism) {
+        this->control.break_now = true;
       }
-      swmr_queue.push(std::forward<InputType>(e));
-      while(try_pop());
     }
 
-    // ended by parent, no more inputs
     inline void end() {
-      // by swmr_queue to tell the threads to end
-      swmr_queue.end();
-      while (true) {
-        while (try_pop());
-        if (has_threads_alive()) {
-          std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        } else {
-          break;
-        }
-      }
-      for (auto& t : threads) {
-        t.join();
-      }
-      threads.clear();
+      shuffler.terminate();
+      receive_results(false);
+      shuffler.clear();
       Child::end();
     }
   };
@@ -189,9 +220,11 @@ struct Parallel {
 };
 
 template<typename Parent, typename Args,
-  std::enable_if_t<Args::name == "parallel">* = nullptr,
-  std::enable_if_t<traits::is_pipe_operator<Parent>::value>* = nullptr>
-inline Parallel<Parent, Args>
+  typename P = traits::remove_cvr_t<Parent>,
+  typename A = traits::remove_cvr_t<Args>,
+  std::enable_if_t<A::name == "parallel">* = nullptr,
+  std::enable_if_t<traits::is_pipe_operator<P>::value>* = nullptr>
+inline Parallel<P, A>
 operator | (Parent&& parent, Args&& args) {
   return {std::forward<Parent>(parent), std::forward<Args>(args)};
 }

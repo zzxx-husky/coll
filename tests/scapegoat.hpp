@@ -3,8 +3,8 @@
 #include <iostream>
 
 struct ScapegoatCounter {
-  static int num_scapegoat_copy;
-  static int num_scapegoat_move;
+  inline static int num_scapegoat_copy;
+  inline static int num_scapegoat_move;
 
   static void clear() {
     num_scapegoat_copy = num_scapegoat_move = 0;
@@ -16,15 +16,12 @@ struct ScapegoatCounter {
   }
 };
 
-int ScapegoatCounter::num_scapegoat_copy = 0;
-int ScapegoatCounter::num_scapegoat_move = 0;
-
 struct Scapegoat {
   int val = 0;
 
   Scapegoat() = default;
 
-  Scapegoat(int val): val(val) {}
+  explicit Scapegoat(int val): val(val) {}
 
   Scapegoat(const Scapegoat& o) {
     val = o.val;
@@ -47,11 +44,11 @@ struct Scapegoat {
   }
 
   Scapegoat operator+ (int a) {
-    return {val + a};
+    return Scapegoat{val + a};
   }
 
   Scapegoat operator+ (const Scapegoat& other) {
-    return {val + other.val};
+    return Scapegoat{val + other.val};
   }
 
   template<typename Other>
@@ -87,4 +84,13 @@ struct Scapegoat {
   friend inline bool operator!=(const Scapegoat& a, const Scapegoat& b) {
     return a.val != b.val;
   }
+};
+
+namespace std {
+template<>
+struct hash<Scapegoat> {
+  size_t operator()(const Scapegoat& a) const {
+    return a.val;
+  }
+};
 };

@@ -4,6 +4,7 @@
 #include <string_view>
 
 #include "control.hpp"
+#include "traits.hpp"
 
 namespace coll {
 
