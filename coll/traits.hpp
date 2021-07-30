@@ -99,6 +99,12 @@ auto is_builder_impl(int) -> decltype(
 
 template<typename T, typename E>
 std::false_type is_builder_impl(...);
+
+template<typename X>
+std::true_type is_instance_of_impl(X x);
+
+template<typename Y>
+std::false_type is_instance_of_impl(...);
 } // namespace details
 
 template<typename T, template <typename ...> class U>
@@ -200,5 +206,8 @@ template<typename T, typename E>
 struct builder<T, E, false> {
   using result_t = void;
 };
+
+template<auto x, typename Y>
+using is_instance_of = decltype(details::is_instance_of_impl<Y>(x));
 } // namespace traits
 } // namespace coll

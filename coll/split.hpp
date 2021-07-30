@@ -4,12 +4,14 @@
 #include "container_utils.hpp"
 
 namespace coll {
+struct SplitArgsTag {};
+
 template<
   typename Condition,
   typename ContainerBuilder,
   bool CacheByRef = false>
 struct SplitArgs {
-  constexpr static std::string_view name = "split";
+  using TagType = SplitArgsTag;
   // Container is expected to have the following member functions:
   // 1. insert / push_back / push / emplace for insertion
   // 2. clear
@@ -106,7 +108,7 @@ inline auto split(Condition condition) {
 template<typename Parent, typename Args,
   typename P = traits::remove_cvr_t<Parent>,
   typename A = traits::remove_cvr_t<Args>,
-  std::enable_if_t<A::name == "split">* = nullptr,
+  std::enable_if_t<std::is_same<typename A::TagType, SplitArgsTag>::value>* = nullptr,
   std::enable_if_t<traits::is_pipe_operator<P>::value>* = nullptr>
 inline Split<P, A>
 operator | (Parent&& parent, Args&& args) {

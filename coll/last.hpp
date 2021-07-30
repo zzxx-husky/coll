@@ -4,9 +4,11 @@
 #include "reference.hpp"
 
 namespace coll {
+struct LastArgsTag {};
+
 template<bool Ref>
 struct LastArgs {
-  constexpr static std::string_view name = "last";
+  using TagType = LastArgsTag;
 
   inline LastArgs<true> ref() { return {}; }
 
@@ -57,7 +59,7 @@ inline LastArgs<false> last() { return {}; }
 template<typename Parent, typename Args,
   typename P = traits::remove_cvr_t<Parent>,
   typename A = traits::remove_cvr_t<Args>,
-  std::enable_if_t<A::name == "last">* = nullptr,
+  std::enable_if_t<std::is_same<typename A::TagType, LastArgsTag>::value>* = nullptr,
   std::enable_if_t<traits::is_pipe_operator<P>::value>* = nullptr>
 inline decltype(auto) operator | (Parent&& parent, Args&& args) {
   return Last<P, A>{std::forward<Parent>(parent), std::forward<Args>(args)}.last();

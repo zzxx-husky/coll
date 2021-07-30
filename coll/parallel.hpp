@@ -14,9 +14,11 @@ namespace parallel_utils {
 static zaf::ActorSystem actor_system;
 } // namespace parallel_utils
 
+struct ParallelArgsTag {};
+
 template<typename PipelineBuilder, typename ShuffleStrat>
 struct ParallelArgs {
-  constexpr static std::string_view name = "parallel";
+  using TagType = ParallelArgsTag;
 
   template<typename I>
   using ShuffleStratType = typename ShuffleStrat::template type<I>;
@@ -222,7 +224,7 @@ struct Parallel {
 template<typename Parent, typename Args,
   typename P = traits::remove_cvr_t<Parent>,
   typename A = traits::remove_cvr_t<Args>,
-  std::enable_if_t<A::name == "parallel">* = nullptr,
+  std::enable_if_t<std::is_same<typename A::TagType, ParallelArgsTag>::value>* = nullptr,
   std::enable_if_t<traits::is_pipe_operator<P>::value>* = nullptr>
 inline Parallel<P, A>
 operator | (Parent&& parent, Args&& args) {

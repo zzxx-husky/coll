@@ -3,9 +3,11 @@
 #include "base.hpp"
 
 namespace coll {
+struct MapArgsTag {};
+
 template<typename M>
 struct MapArgs {
-  constexpr static std::string_view name = "map";
+  using TagType = MapArgsTag;
 
   template<typename Input>
   using MapperResultType = typename traits::invocation<M, Input>::result_t;
@@ -50,7 +52,7 @@ struct Map {
 template<typename Parent, typename Args,
   typename P = traits::remove_cvr_t<Parent>,
   typename A = traits::remove_cvr_t<Args>,
-  std::enable_if_t<A::name == "map">* = nullptr,
+  std::enable_if_t<std::is_same<typename A::TagType, MapArgsTag>::value>* = nullptr,
   std::enable_if_t<traits::is_pipe_operator<P>::value>* = nullptr>
 inline Map<P, A>
 operator | (Parent&& parent, Args&& args) {

@@ -4,9 +4,11 @@
 #include "place_holder.hpp"
 
 namespace coll {
+struct BranchArgsTag {};
+
 template<typename PipelineBuilder>
 struct BranchArgs {
-  constexpr static std::string_view name = "branch";
+  using TagType = BranchArgsTag;
 
   PipelineBuilder pipeline_builder;
 };
@@ -109,7 +111,7 @@ struct Branch {
 template<typename Parent, typename Args,
   typename P = traits::remove_cvr_t<Parent>,
   typename A = traits::remove_cvr_t<Args>,
-  std::enable_if_t<A::name == "branch">* = nullptr,
+  std::enable_if_t<std::is_same<typename A::TagType, BranchArgsTag>::value>* = nullptr,
   std::enable_if_t<traits::is_pipe_operator<P>::value>* = nullptr>
 inline Branch<P, A>
 operator | (Parent&& parent, Args&& args) {

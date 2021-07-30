@@ -5,9 +5,11 @@
 #include "utils.hpp"
 
 namespace coll {
+struct InitTailArgsTag {};
+
 template<bool InitOrTail, bool CacheByRef>
 struct InitTailArgs {
-  constexpr static std::string_view name = "init_tail";
+  using TagType = InitTailArgsTag;
 
   inline InitTailArgs<InitOrTail, true> cache_by_ref() { return {}; }
 
@@ -91,7 +93,7 @@ struct InitTail {
 template<typename Parent, typename Args,
   typename P = traits::remove_cvr_t<Parent>,
   typename A = traits::remove_cvr_t<Args>,
-  std::enable_if_t<A::name == "init_tail">* = nullptr,
+  std::enable_if_t<std::is_same<typename A::TagType, InitTailArgsTag>::value>* = nullptr,
   std::enable_if_t<traits::is_pipe_operator<P>::value>* = nullptr>
 inline InitTail<P, A>
 operator | (Parent&& parent, Args&& args) {

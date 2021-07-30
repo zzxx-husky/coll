@@ -3,9 +3,11 @@
 #include "base.hpp"
 
 namespace coll {
+struct ConcatArgsTag {};
+
 template<typename Parent>
 struct ConcatArgs {
-  constexpr static std::string_view name = "concat";
+  using TagType = ConcatArgsTag;
 
   using ParentType = Parent;
 
@@ -163,7 +165,7 @@ struct Concat {
 template<typename Parent, typename Args,
   typename P = traits::remove_cvr_t<Parent>,
   typename A = traits::remove_cvr_t<Args>,
-  std::enable_if_t<A::name == "concat">* = nullptr,
+  std::enable_if_t<std::is_same<typename A::TagType, ConcatArgsTag>::value>* = nullptr,
   std::enable_if_t<traits::is_pipe_operator<P>::value>* = nullptr>
 inline Concat<P, A>
 operator | (Parent&& parent, Args&& args) {

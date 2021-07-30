@@ -7,11 +7,13 @@
 #include "utils.hpp"
 
 namespace coll {
+struct ReverseArgsTag {};
+
 template<
   typename BufferBuilder = NullArg,
   bool CacheByRef = false
 > struct ReverseArgs {
-  constexpr static std::string_view name = "reverse";
+  using TagType = ReverseArgsTag;
 
   BufferBuilder buffer_builder;
 
@@ -139,7 +141,7 @@ struct Reverse {
 template<typename Parent, typename Args,
   typename P = traits::remove_cvr_t<Parent>,
   typename A = traits::remove_cvr_t<Args>,
-  std::enable_if_t<A::name == "reverse">* = nullptr,
+  std::enable_if_t<std::is_same<typename A::TagType, ReverseArgsTag>::value>* = nullptr,
   std::enable_if_t<traits::is_pipe_operator<P>::value>* = nullptr>
 inline Reverse<P, A>
 operator | (Parent&& parent, Args&& args) {

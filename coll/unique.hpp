@@ -5,9 +5,11 @@
 #include "traits.hpp"
 
 namespace coll {
+struct UniqueArgsTag {};
+
 template<typename Mapper = typename Identity::type>
 struct UniqueArgs {
-  constexpr static std::string_view name = "unique";
+  using TagType = UniqueArgsTag;
 
   Mapper mapper = Identity::value;
 
@@ -62,7 +64,7 @@ struct Unique {
 template<typename Parent, typename Args,
   typename P = traits::remove_cvr_t<Parent>,
   typename A = traits::remove_cvr_t<Args>,
-  std::enable_if_t<A::name == "unique">* = nullptr,
+  std::enable_if_t<std::is_same<typename A::TagType, UniqueArgsTag>::value>* = nullptr,
   std::enable_if_t<traits::is_pipe_operator<P>::value>* = nullptr>
 inline Unique<P, A>
 operator | (Parent&& parent, Args&& args) {

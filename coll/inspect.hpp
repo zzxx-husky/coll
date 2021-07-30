@@ -3,9 +3,12 @@
 #include "base.hpp"
 
 namespace coll {
+struct InspectArgsTag {};
+
 template<typename P>
 struct InspectArgs {
-  constexpr static std::string_view name = "inspect";
+  using TagType = InspectArgsTag;
+
   P process;
 };
 
@@ -47,7 +50,7 @@ struct Inspect {
 template<typename Parent, typename Args,
   typename P = traits::remove_cvr_t<Parent>,
   typename A = traits::remove_cvr_t<Args>,
-  std::enable_if_t<A::name == "inspect">* = nullptr,
+  std::enable_if_t<std::is_same<typename A::TagType, InspectArgsTag>::value>* = nullptr,
   std::enable_if_t<traits::is_pipe_operator<P>::value>* = nullptr>
 inline Inspect<P, A>
 operator | (Parent&& parent, Args&& args) {

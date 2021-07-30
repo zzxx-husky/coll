@@ -6,9 +6,11 @@
 #include "foreach.hpp"
 
 namespace coll {
+struct FlatmapArgsTag {};
+
 template<typename M>
 struct FlatmapArgs {
-  constexpr static std::string_view name = "flatmap";
+  using TagType = FlatmapArgsTag;
 
   M mapper;
 
@@ -115,7 +117,7 @@ struct Flatmap {
 template<typename Parent, typename Args,
   typename P = traits::remove_cvr_t<Parent>,
   typename A = traits::remove_cvr_t<Args>,
-  std::enable_if_t<A::name == "flatmap">* = nullptr,
+  std::enable_if_t<std::is_same<typename A::TagType, FlatmapArgsTag>::value>* = nullptr,
   std::enable_if_t<traits::is_pipe_operator<P>::value>* = nullptr>
 inline Flatmap<P, A>
 operator | (Parent&& parent, Args&& args) {

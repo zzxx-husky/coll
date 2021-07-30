@@ -71,13 +71,16 @@ struct Sort {
   }
 };
 
+
+struct SortArgsTag {};
+
 template<
   typename Comparator = NullArg,
   typename BufferBuilder = NullArg,
   bool CacheByRef = false,
   bool Reverse = false
 > struct SortArgs {
-  constexpr static std::string_view name = "sort";
+  using TagType = SortArgsTag;
 
   // members
   Comparator comparator;
@@ -174,7 +177,7 @@ template<typename Parent, typename Args,
   typename P = traits::remove_cvr_t<Parent>,
   typename A = traits::remove_cvr_t<Args>,
   std::enable_if_t<traits::is_pipe_operator<P>::value>* = nullptr,
-  std::enable_if_t<A::name == "sort">* = nullptr>
+  std::enable_if_t<std::is_same<typename A::TagType, SortArgsTag>::value>* = nullptr>
 inline Sort<P, A> operator | (Parent&& parent, Args&& args) {
   return {std::forward<Parent>(parent), std::forward<Args>(args)};
 }

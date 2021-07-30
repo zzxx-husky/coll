@@ -4,12 +4,14 @@
 #include "utils.hpp"
 
 namespace coll {
+struct PartitionArgsTag {};
+
 template<
   typename PipelineBuilder,
   typename PartitionMapBuilder,
   typename KeyBy = Identity::type
 > struct PartitionArgs {
-  constexpr static std::string_view name = "partition";
+  using TagType = PartitionArgsTag;
 
   PipelineBuilder pipeline_builder;
   PartitionMapBuilder partition_map_builder;

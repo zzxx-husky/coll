@@ -111,7 +111,7 @@ int main(int argc, char** argv) {
   coll::range(1, argc)
     | coll::map(anonyc_cc(argv[_]))
     | coll::window(2)
-    | coll::inspect([&](auto& w) {
+    | coll::foreach([&](auto& w) {
         if (strcmp(w[0], "year") == 0) {
           year = atoi(w[1]);
         } else if (strcmp(w[0], "width") == 0) {
@@ -119,7 +119,6 @@ int main(int argc, char** argv) {
         } else {
           std::cout << "Unknown arg: " << w[0] << std::endl;
         }
-      })
-    | coll::act();
+      });
   make_calendar(year, width);
 }

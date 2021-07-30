@@ -4,9 +4,11 @@
 #include "reference.hpp"
 
 namespace coll {
+struct HeadArgsTag {};
+
 template<bool Ref>
 struct HeadArgs {
-  constexpr static std::string_view name = "head";
+  using TagType = HeadArgsTag;
 
   inline HeadArgs<true> ref() { return {}; }
 
@@ -58,7 +60,7 @@ struct Head {
 template<typename Parent, typename Args,
   typename P = traits::remove_cvr_t<Parent>,
   typename A = traits::remove_cvr_t<Args>,
-  std::enable_if_t<A::name == "head">* = nullptr,
+  std::enable_if_t<std::is_same<typename A::TagType, HeadArgsTag>::value>* = nullptr,
   std::enable_if_t<traits::is_pipe_operator<P>::value>* = nullptr>
 inline decltype(auto) operator | (Parent&& parent, Args&& args) {
   return Head<P, A>{std::forward<Parent>(parent), std::forward<Args>(args)}.head();

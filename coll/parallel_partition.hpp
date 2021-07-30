@@ -4,9 +4,11 @@
 #include "partition.hpp"
 
 namespace coll {
+struct ParallelPartitionArgsTag {};
+
 template<typename PipeBuilder, typename KeyBy = Identity::type>
 struct ParallelPartitionArgs {
-  static constexpr std::string_view name = "parallel_partition";
+  using TagType = ParallelPartitionArgsTag;
 
   size_t parallelism;
   PipeBuilder pipe_builder;
@@ -39,7 +41,7 @@ parallel_partition(size_t parallelism, PipeBuilder builder) {
 template<typename Parent, typename Args,
   typename P = traits::remove_cvr_t<Parent>,
   typename A = traits::remove_cvr_t<Args>,
-  std::enable_if_t<A::name == "parallel_partition">* = nullptr,
+  std::enable_if_t<std::is_same<typename A::TagType, ParallelPartitionArgsTag>::value>* = nullptr,
   std::enable_if_t<traits::is_pipe_operator<P>::value>* = nullptr>
 inline auto operator | (Parent&& parent, Args&& args) {
   return parent

@@ -11,10 +11,12 @@ inline auto count() {
   return aggregate(size_t(0), [](auto& cnt, auto&&) { ++cnt; });
 }
 
+struct MinMaxArgsTag {};
+
 // max, min
 template<typename Comparator, bool Ref>
 struct MinMaxArgs {
-  constexpr static std::string_view name = "minmax";
+  using TagType = MinMaxArgsTag;
 
   Comparator comparator;
 
@@ -46,7 +48,7 @@ inline auto min() {
 template<typename Parent, typename Args,
   typename P = traits::remove_cvr_t<Parent>,
   typename A = traits::remove_cvr_t<Args>,
-  std::enable_if_t<A::name == "minmax">* = nullptr,
+  std::enable_if_t<std::is_same<typename A::TagType, MinMaxArgsTag>::value>* = nullptr,
   std::enable_if_t<traits::is_pipe_operator<P>::value>* = nullptr>
 inline auto operator | (Parent&& parent, Args&& args) {
   using InputType = typename P::OutputType;
@@ -62,10 +64,12 @@ inline auto operator | (Parent&& parent, Args&& args) {
   return parent | aggregate(ResultType(), find_minmax);
 }
 
+struct SumArgsTag {};
+
 // sum
 template<typename Add, typename InitVal = NullArg>
 struct SumArgs {
-  constexpr static std::string_view name = "sum";
+  using TagType = SumArgsTag;
 
   Add add;
   InitVal init_val;
@@ -97,8 +101,7 @@ inline auto sum() {
 template<typename Parent, typename Args,
   typename P = traits::remove_cvr_t<Parent>,
   typename A = traits::remove_cvr_t<Args>,
-  std::enable_if_t<"sum" == A::name>* = nullptr, // compilation failure with unknown reason
-  // std::enable_if_t<traits::match_template<A, SumArgs>::value>* = nullptr,
+  std::enable_if_t<std::is_same<typename A::TagType, SumArgsTag>::value>* = nullptr,
   std::enable_if_t<traits::is_pipe_operator<P>::value>* = nullptr>
 inline auto operator | (Parent&& parent, Args&& args) {
   if constexpr (Args::has_init_val) {
@@ -119,10 +122,12 @@ inline auto operator | (Parent&& parent, Args&& args) {
   }
 }
 
+struct AvgArgsTag {};
+
 // avg
 template<typename Add, typename InitVal = NullArg>
 struct AvgArgs {
-  constexpr static std::string_view name = "avg";
+  using TagType = AvgArgsTag;
 
   Add add;
   InitVal init_val;
@@ -155,7 +160,7 @@ inline auto avg() {
 template<typename Parent, typename Args,
   typename P = traits::remove_cvr_t<Parent>,
   typename A = traits::remove_cvr_t<Args>,
-  std::enable_if_t<A::name == "avg">* = nullptr,
+  std::enable_if_t<std::is_same<typename A::TagType, AvgArgsTag>::value>* = nullptr,
   std::enable_if_t<traits::is_pipe_operator<P>::value>* = nullptr>
 inline auto operator | (Parent&& parent, Args&& args) {
   if constexpr (Args::has_init_val) {

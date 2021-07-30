@@ -9,14 +9,16 @@
 #include "reference.hpp"
 
 namespace coll {
+struct GroupByArgsTag {};
+
 template<typename KeyBy,
   typename ValueBy = Identity::type,
   typename Aggregator = ContainerBuilder<std::vector>,
   typename AggregateTo = DefaultContainerInserter::type,
   bool CacheByRef = false,
   bool Adjacenct = false>
-struct GroupBy {
-  constexpr static std::string_view name = "groupby";
+struct GroupByArgs {
+  using TagType = GroupByArgsTag;
 
   KeyBy keyby;
   ValueBy valby = Identity::value;
@@ -25,33 +27,33 @@ struct GroupBy {
 
   // used by user
   template<typename AnotherAggregator, typename AnotherAggregateTo>
-  inline GroupBy<KeyBy, ValueBy, AnotherAggregator, AnotherAggregateTo, CacheByRef, Adjacenct>
+  inline GroupByArgs<KeyBy, ValueBy, AnotherAggregator, AnotherAggregateTo, CacheByRef, Adjacenct>
   aggregate(AnotherAggregator a, AnotherAggregateTo b) {
     return {std::forward<KeyBy>(keyby), std::forward<ValueBy>(valby),
             std::forward<AnotherAggregator>(a), std::forward<AnotherAggregateTo>(b)};
   }
 
   template<typename AnotherAggregator>
-  inline GroupBy<KeyBy, ValueBy, AnotherAggregator, DefaultContainerInserter::type, CacheByRef, Adjacenct>
+  inline GroupByArgs<KeyBy, ValueBy, AnotherAggregator, DefaultContainerInserter::type, CacheByRef, Adjacenct>
   aggregate(AnotherAggregator a) {
     return {std::forward<KeyBy>(keyby), std::forward<ValueBy>(valby),
             std::forward<AnotherAggregator>(a), DefaultContainerInserter::value};
   }
 
-  inline GroupBy<KeyBy, ValueBy, Aggregator, AggregateTo, true, Adjacenct>
+  inline GroupByArgs<KeyBy, ValueBy, Aggregator, AggregateTo, true, Adjacenct>
   cache_by_ref() {
     return {std::forward<KeyBy>(keyby), std::forward<ValueBy>(valby),
             std::forward<Aggregator>(aggregator), std::forward<AggregateTo>(aggregate_to)};
   }
 
-  inline GroupBy<KeyBy, ValueBy, Aggregator, AggregateTo, CacheByRef, true>
+  inline GroupByArgs<KeyBy, ValueBy, Aggregator, AggregateTo, CacheByRef, true>
   adjacent() {
     return {std::forward<KeyBy>(keyby), std::forward<ValueBy>(valby),
             std::forward<Aggregator>(aggregator), std::forward<AggregateTo>(aggregate_to)};
   }
 
   template<typename AnotherValueBy>
-  inline GroupBy<KeyBy, AnotherValueBy, Aggregator, AggregateTo, CacheByRef, Adjacenct>
+  inline GroupByArgs<KeyBy, AnotherValueBy, Aggregator, AggregateTo, CacheByRef, Adjacenct>
   valueby(AnotherValueBy another_valueby) {
     return {std::forward<KeyBy>(keyby), std::forward<AnotherValueBy>(another_valueby),
             std::forward<Aggregator>(aggregator), std::forward<AggregateTo>(aggregate_to)};
@@ -93,7 +95,7 @@ struct GroupBy {
 };
 
 template<typename KeyBy>
-inline GroupBy<KeyBy> groupby(KeyBy keyby) {
+inline GroupByArgs<KeyBy> groupby(KeyBy keyby) {
   return {std::forward<KeyBy>(keyby)};
 }
 
@@ -104,7 +106,8 @@ inline auto groupby() {
 template<typename Parent, typename Args,
   typename P = traits::remove_cvr_t<Parent>,
   typename A = traits::remove_cvr_t<Args>,
-  std::enable_if_t<A::name == "groupby" && !Args::is_adjacent>* = nullptr,
+  std::enable_if_t<std::is_same<typename A::TagType, GroupByArgsTag>::value>* = nullptr,
+  std::enable_if_t<!A::is_adjacent>* = nullptr,
   std::enable_if_t<traits::is_pipe_operator<P>::value>* = nullptr>
 inline auto operator | (Parent&& parent, Args&& args) {
   using InputType = typename P::OutputType;
@@ -132,7 +135,8 @@ inline auto operator | (Parent&& parent, Args&& args) {
 template<typename Parent, typename Args,
   typename P = traits::remove_cvr_t<Parent>,
   typename A = traits::remove_cvr_t<Args>,
-  std::enable_if_t<A::name == "groupby" && A::is_adjacent>* = nullptr,
+  std::enable_if_t<std::is_same<typename A::TagType, GroupByArgsTag>::value>* = nullptr,
+  std::enable_if_t<A::is_adjacent>* = nullptr,
   std::enable_if_t<traits::is_pipe_operator<P>::value>* = nullptr>
 inline GroupByAdjacent<P, A>
 operator | (Parent&& parent, Args&& args) {

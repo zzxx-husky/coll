@@ -6,9 +6,11 @@
 #include "reference.hpp"
 
 namespace coll {
+struct DistinctArgsTag {};
+
 template<typename SetBuilder, typename Inserter, bool CacheByRef>
 struct DistinctArgs {
-  constexpr static std::string_view name = "distinct";
+  using TagType = DistinctArgsTag;
 
   SetBuilder set_builder;
   // [](auto& set, auto& elem) -> bool
@@ -111,7 +113,7 @@ struct Distinct {
 template<typename Parent, typename Args,
   typename P = traits::remove_cvr_t<Parent>,
   typename A = traits::remove_cvr_t<Args>,
-  std::enable_if_t<A::name == "distinct">* = nullptr,
+  std::enable_if_t<std::is_same<typename A::TagType, DistinctArgsTag>::value>* = nullptr,
   std::enable_if_t<traits::is_pipe_operator<P>::value>* = nullptr>
 inline Distinct<P, A>
 operator | (Parent&& parent, Args&& args) {

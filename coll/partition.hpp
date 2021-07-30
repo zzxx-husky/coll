@@ -126,9 +126,8 @@ struct Partition {
 
 template<typename Parent, typename Args,
   typename A = traits::remove_cvr_t<Args>,
-  // std::enable_if_t<A::name == "partition">* = nullptr,
-  std::enable_if_t<traits::match_template<A, PartitionArgs>::value>* = nullptr,
   typename P = traits::remove_cvr_t<Parent>,
+  std::enable_if_t<std::is_same<typename A::TagType, PartitionArgsTag>::value>* = nullptr,
   std::enable_if_t<traits::is_pipe_operator<P>::value>* = nullptr>
 inline Partition<P, A>
 operator | (Parent&& parent, Args&& args) {

@@ -5,11 +5,13 @@
 #include "windowed_elements.hpp"
 
 namespace coll {
+struct WindowArgsTag {};
+
 // Note(zzxx): May consider pushing `size` and `step` to the template arguements
 // but not sure what the benefit is for doing so
 template<bool CacheByRef>
 struct WindowArgs {
-  constexpr static std::string_view name = "window";
+  using TagType = WindowArgsTag;
 
   size_t size;
   size_t step;
@@ -88,7 +90,7 @@ struct Window {
 template<typename Parent, typename Args,
   typename P = traits::remove_cvr_t<Parent>,
   typename A = traits::remove_cvr_t<Args>,
-  std::enable_if_t<A::name == "window">* = nullptr,
+  std::enable_if_t<std::is_same<typename A::TagType, WindowArgsTag>::value>* = nullptr,
   std::enable_if_t<traits::is_pipe_operator<P>::value>* = nullptr>
 inline Window<P, A>
 operator | (Parent&& parent, Args&& args) {

@@ -3,9 +3,12 @@
 #include "base.hpp"
 
 namespace coll {
+struct ToArgsTag {};
+
 template<typename ContainerBuilder, bool CopyOrMove>
 struct ToArgs {
-  inline constexpr static std::string_view name = "to";
+  using TagType = ToArgsTag;
+
   // 1. a container copy;
   // 2. a reference to an existing container
   // 3. a builder that constructs a new container
@@ -112,7 +115,7 @@ struct To {
 template<typename Parent, typename Args,
   typename P = traits::remove_cvr_t<Parent>,
   typename A = traits::remove_cvr_t<Args>,
-  std::enable_if_t<A::name == "to">* = nullptr,
+  std::enable_if_t<std::is_same<typename A::TagType, ToArgsTag>::value>* = nullptr,
   std::enable_if_t<traits::is_pipe_operator<P>::value>* = nullptr>
 inline decltype(auto)
 operator | (Parent&& parent, Args&& args) {

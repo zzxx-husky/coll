@@ -6,10 +6,11 @@
 #include "base.hpp"
 
 namespace coll {
+struct PrintArgsTag {};
 
 template<typename O, typename F = NullArg>
 struct PrintArgs {
-  constexpr static std::string_view name = "print";
+  using TagType = PrintArgsTag;
 
   O& out;
   std::string start;
@@ -108,7 +109,7 @@ struct Print {
 template<typename Parent, typename Args,
   typename P = traits::remove_cvr_t<Parent>,
   typename A = traits::remove_cvr_t<Args>,
-  std::enable_if_t<A::name == "print">* = nullptr,
+  std::enable_if_t<std::is_same<typename A::TagType, PrintArgsTag>::value>* = nullptr,
   std::enable_if_t<traits::is_pipe_operator<P>::value>* = nullptr>
 inline decltype(auto) operator | (Parent&& parent, Args args) {
   return Print<P, A>{

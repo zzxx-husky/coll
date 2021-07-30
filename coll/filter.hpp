@@ -3,9 +3,12 @@
 #include "base.hpp"
 
 namespace coll {
+struct FilterArgsTag {};
+
 template<typename F>
 struct FilterArgs {
-  constexpr static std::string_view name = "filter";
+  using TagType = FilterArgsTag;
+
   F filter;
 };
 
@@ -48,7 +51,7 @@ struct Filter {
 template<typename Parent, typename Args,
   typename P = traits::remove_cvr_t<Parent>,
   typename A = traits::remove_cvr_t<Args>,
-  std::enable_if_t<A::name == "filter">* = nullptr,
+  std::enable_if_t<std::is_same<typename A::TagType, FilterArgsTag>::value>* = nullptr,
   std::enable_if_t<traits::is_pipe_operator<P>::value>* = nullptr>
 inline Filter<P, A>
 operator | (Parent&& parent, Args&& args) {
