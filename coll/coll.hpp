@@ -95,13 +95,15 @@ inline auto operator | (Coll&& c, PostIterate) {
 }
 
 template<typename Execution,
+  typename E = traits::remove_cvr_t<Execution>,
   // it is an execution
-  std::enable_if_t<traits::is_execution<Execution>::value>* = nullptr,
+  std::enable_if_t<traits::is_execution<E>::value>* = nullptr,
   // the execution has result
-  std::enable_if_t<traits::execution_has_result<Execution>::value>* = nullptr,
+  std::enable_if_t<traits::execution_has_result<E>::value>* = nullptr,
   // the result is iterable
-  std::enable_if_t<traits::is_iterable<traits::execution_result_t<Execution>>::value>* = nullptr>
+  std::enable_if_t<traits::is_iterable<traits::execution_result_t<E>>::value>* = nullptr>
 inline auto operator | (Execution&& e, PostIterate) {
+  return PostIterateResultOfExecution<E>{std::forward<Execution>(e)};
 }
 
 template<typename E, typename ... I>

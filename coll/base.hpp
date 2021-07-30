@@ -154,23 +154,29 @@ template<typename T>
 using execution_has_result = decltype(details::execution_has_result<T>(0));
 
 template<typename T, bool enable = true>
-struct operator_output_t {
+struct operator_output {
   using type = typename T::OutputType;
 };
 
 template<typename T>
-struct operator_output_t<T, false> {
+struct operator_output<T, false> {
   using type = void;
 };
 
 template<typename T, bool enable = true>
-struct execution_result_t {
+using operator_output_t = typename operator_output<T, enable>::type;
+
+template<typename T, bool enable = true>
+struct execution_result {
   using type = decltype(std::declval<T&>().result());
 };
 
 template<typename T>
-struct execution_result_t<T, false> {
+struct execution_result<T, false> {
   using type = void;
 };
+
+template<typename T, bool enable = true>
+using execution_result_t = typename execution_result<T, enable>::type;
 } // namespace traits
 } // namespace coll

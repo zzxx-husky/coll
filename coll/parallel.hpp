@@ -90,8 +90,8 @@ struct Parallel {
   constexpr static bool IsSinkWithoutRes = !IsPipeOperator && !IsSinkWithRes;
 
   using OutputType =
-    std::conditional_t<IsPipeOperator, typename traits::operator_output_t<PipelineType, IsPipeOperator>::type,
-    std::conditional_t<IsSinkWithRes , std::pair<size_t, typename traits::remove_cvr_t<typename traits::execution_result_t<PipelineType, IsSinkWithRes>::type>>,
+    std::conditional_t<IsPipeOperator, typename traits::operator_output_t<PipelineType, IsPipeOperator>,
+    std::conditional_t<IsSinkWithRes , std::pair<size_t, typename traits::remove_cvr_t<typename traits::execution_result_t<PipelineType, IsSinkWithRes>>>,
                 /* IsSinkWithoutRes */ size_t
   >>;
 

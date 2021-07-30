@@ -14,12 +14,14 @@ The optimizations are typically
 
 `coll` is not designed for functional programming (FP is typically composed of pure functions and avoids shared state, mutable data and side-effects).
 
-# Explain Function Nesting by Short Examples
+`coll` also supports `parallel` operator for parallel pipeline processing with the help of [ZAF](https://github.com/zzxx-husky/zaf).
+
+# Explain Coll in Short
 
 1. A sink operator triggers the construction of an execution object that wraps the logics of all the operators in the pipeline (for lazy evaluation).
 2. The logic of the child operator is typically *nested* inside the logic of the parent operator.
 3. The execution starts from the source operator(s), where the data are actively pushed by the parent operator to the child operator.
-4. With function inlining, we expect that *coll operator* and *lambda call* would be optimized out by the compiler.
+4. With function inlining, we expect the logics of the *coll operators* (i.e., *lambda calls*) are well inlined by the compiler.
 
 ```c++
 /* Count the occurrence of character in HelloWorld */                                                                                 auto counts = []() {
@@ -101,19 +103,14 @@ The example uses a lots of operator for the purpose of showing how different ope
 Note that, the above code using native syntax can actually be improved:
 1. When taking the `init` of `in1`, we can directly iterate from the `1st` element (zero based) to the `end`. No need to use `skipped_head` to check each element of `in1`;
 2. When taking the `tail` of `in2`, we can directly iterate from the `begin` to the second last element. No need to use `prev_i2` to cache the previous element;
-3. When checking whether the `index` of the elements is `_ % 2 == 1`, it is not necessary to zip the element with the index using a pair.
 
-Now, worth to mention that, for point 1 and point 2, they can be optimized in `coll` by pushing `init` and `tail` upwards to the source operator in compile time.
+Now, worth to mention that, the two points can be optimized in `coll` by pushing `init` and `tail` upwards to the source operator in compile time.
 That is not done yet, but similar technique is applied for `reverse` operator, i.e., instead of reversing the elements in the middle of the processing, it is better to directly reverse the input from the beginning if possible.
-For point 3, it is typically what we hope the compiler will optimize for us, i.e., the overhead of using a `pair` can be removed by the compiler.
 
 ## TODOs:
 + API: window with aggregation;
 + Optimization: Improve parallel operators:
-   + Thread sharing among different parallel operators
-   + Data exchange among different parallel operators
-+ Code simplification
-   + Unify different result cases in partition() and parallel()
+   + Direct data exchange among consecutive parallel operators
 
 ## Useful links
 + [Operator List](https://github.com/zzxx-husky/cpp-collection-api/wiki/OperatorList), which lists all the operators in `coll`.
