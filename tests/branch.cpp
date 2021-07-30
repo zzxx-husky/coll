@@ -1,6 +1,6 @@
 #include <unordered_set>
 
-#include "collection/coll.hpp"
+#include "coll/coll.hpp"
 #include "gtest/gtest.h"
 
 GTEST_TEST(Branch, TwoBranches) {

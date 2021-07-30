@@ -2,7 +2,7 @@
 #include <iomanip>
 #include <sstream>
 
-#include "collection/coll.hpp"
+#include "coll/coll.hpp"
 
 int main() {
   std::cout << "#pragma once" << std::endl

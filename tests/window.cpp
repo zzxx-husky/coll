@@ -1,4 +1,4 @@
-#include "collection/coll.hpp"
+#include "coll/coll.hpp"
 #include "gtest/gtest.h"
 
 #include "scapegoat.hpp"

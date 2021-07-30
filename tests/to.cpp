@@ -9,7 +9,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "collection/coll.hpp"
+#include "coll/coll.hpp"
 #include "gtest/gtest.h"
 
 template <template<typename ...> class C, bool check_equivalence = true>

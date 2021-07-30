@@ -1,7 +1,7 @@
 #include <iostream>
 
-#include "collection/coll.hpp"
-#include "collection/topk.hpp"
+#include "coll/coll.hpp"
+#include "coll/topk.hpp"
 
 int main() {
   int K = 5;

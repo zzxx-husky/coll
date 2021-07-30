@@ -72,17 +72,17 @@ struct GroupBy {
 
   template<typename Input,
     typename Val = ValueType<Input>>
-  using RefOrVal = std::conditional_t<CacheByRef,
+  using ROV = std::conditional_t<CacheByRef,
     Reference<traits::remove_vr_t<Val>>,
     traits::remove_cvr_t<Val>
   >;
 
-  template<typename Input, typename Elem = RefOrVal<Input>>
+  template<typename Input, typename Elem = ROV<Input>>
   inline static constexpr bool is_builder() {
     return traits::is_builder<Aggregator, Elem>::value;
   }
 
-  template<typename Input, typename Elem = RefOrVal<Input>>
+  template<typename Input, typename Elem = ROV<Input>>
   inline decltype(auto) get_aggregator() {
     if constexpr (traits::is_builder<Aggregator, Elem>::value) {
       return aggregator(Type<Elem>{});

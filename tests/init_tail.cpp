@@ -1,6 +1,6 @@
 #include "gtest/gtest.h"
 
-#include "collection/coll.hpp"
+#include "coll/coll.hpp"
 
 #include "scapegoat.hpp"
 

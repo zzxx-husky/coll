@@ -3,8 +3,8 @@
 #include <queue>
 #include <vector>
 
-#include "collection/coll.hpp"
-#include "collection/topk.hpp"
+#include "coll/coll.hpp"
+#include "coll/topk.hpp"
 
 int main() {
   const int N = 50000000;
