@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 3.5)
 project(cpp-collection)
 
+if (POLICY CMP0074)
+  cmake_policy(SET CMP0074 NEW)
+endif ()
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/modules/")
 

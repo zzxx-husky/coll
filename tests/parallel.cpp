@@ -1,4 +1,5 @@
 #include "coll/coll.hpp"
+#include "coll/parallel_coll.hpp"
 #include "gtest/gtest.h"
 
 GTEST_TEST(Parallel, Sum) {

@@ -21,8 +21,8 @@
 #include "init_tail.hpp"
 #include "inspect.hpp"
 #include "map.hpp"
-#include "parallel.hpp"
-#include "parallel_partition.hpp"
+// #include "parallel.hpp"
+// #include "parallel_partition.hpp"
 #include "partition.hpp"
 #include "reverse.hpp"
 #include "sort.hpp"
@@ -39,8 +39,6 @@
 #include "print.hpp"
 #include "to.hpp"
 #include "to_std_containers.hpp"
-// others
-#include "shuffle_strategy.hpp"
 
 namespace coll {
 template<typename Iter,
