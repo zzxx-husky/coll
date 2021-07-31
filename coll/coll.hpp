@@ -67,6 +67,12 @@ inline auto iterate(Coll& c) {
   return iterate(std::begin(c), std::end(c));
 }
 
+template<typename Chars,
+  std::enable_if_t<std::is_same<char*, traits::remove_cvr_t<Chars>>::value>* = nullptr>
+inline auto iterate(Chars cs) {
+  return iterate(cs, cs + strlen(cs));
+}
+
 // For temporal iterable, keep the iterable itself
 template<typename Coll,
   std::enable_if_t<traits::is_iterable<Coll>::value>* = nullptr>

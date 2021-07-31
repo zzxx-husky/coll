@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(coll)
+project(coll-projects)
 
 if (POLICY CMP0074)
   cmake_policy(SET CMP0074 NEW)
@@ -8,7 +8,7 @@ endif ()
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/modules/")
 
-set(ENABLE_TEST true)
+set(ENABLE_TEST false)
 set(ENABLE_PHMAP true)
 set(BasicLibs pthread rt)
 
@@ -44,6 +44,12 @@ find_package(ZAF REQUIRED)
 include_directories(${ZAF_INCLUDE_DIR})
 set(ExtLibs ${ExtLibs} ${ZAF_LIBRARY})
 
+if (DEFINED ENV{COLL_ROOT})
+  set(COLL_ROOT $ENV{COLL_ROOT})
+endif ()
+find_package(COLL REQUIRED)
+include_directories(${COLL_ROOT_DIR})
+
 if (${ENABLE_TEST})
   if (DEFINED ENV{GTEST_ROOT})
     set(GTEST_ROOT $ENV{GTEST_ROOT})
@@ -56,5 +62,4 @@ if (${ENABLE_TEST})
   add_subdirectory(tests)
 endif ()
 
-add_subdirectory(benchmarks)
-add_subdirectory(examples)
+add_subdirectory(crawler)
