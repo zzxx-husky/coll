@@ -55,6 +55,8 @@ struct Aggregate {
 
     Execution(const Args& args): args(args) {}
 
+    inline void start() {}
+
     inline void process(InputType e) {
       args.aggregate(aggregator, std::forward<InputType>(e));
     }
@@ -70,6 +72,7 @@ struct Aggregate {
     template<typename Exec, typename ... ArgT>
     static auto execute(ArgT&& ... args) {
       auto exec = Exec(std::forward<ArgT>(args)...);
+      exec.start();
       exec.process();
       exec.end();
       return exec.result();

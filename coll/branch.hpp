@@ -68,6 +68,11 @@ struct Branch {
       }
     }
 
+    inline void start() {
+      B<BranchChild>::start();
+      A<OutputChild>::start();
+    }
+
     inline void end() {
       B<BranchChild>::end();
       A<OutputChild>::end();

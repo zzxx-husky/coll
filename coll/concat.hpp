@@ -81,9 +81,23 @@ struct Concat {
       Parent2::process(std::forward<ArgT>(args) ...);
     }
 
-    inline auto end() {
-      Parent1::end();
-      Parent2::end();
+    inline void start() {
+      if constexpr (traits::execution_has_start<Parent1>::value) {
+        Parent1::start();
+      }
+      if constexpr (traits::execution_has_start<Parent2>::value) {
+        Parent2::start();
+      }
+      Child::start();
+    }
+
+    inline void end() {
+      if constexpr (traits::execution_has_end<Parent1>::value) {
+        Parent1::end();
+      }
+      if constexpr (traits::execution_has_end<Parent2>::value) {
+        Parent2::end();
+      }
       Child::end();
     }
 

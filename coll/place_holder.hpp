@@ -33,6 +33,10 @@ struct PostPlaceHolder {
 
     Execution(const ChildExecution& e): child_exec(e) {}
 
+    inline void start() {
+      child_exec.start();
+    }
+
     inline void process(OutputType e) {
       child_exec.process(std::forward<OutputType>(e));
     }
@@ -50,7 +54,7 @@ struct PostPlaceHolder {
     constexpr static ExecutionType execution_type = Run;
 
     template<typename SrcExec, typename ... ArgT>
-    static decltype(auto) execution(ArgT&& ... args) {
+    static decltype(auto) execute(ArgT&& ... args) {
       SrcExec src_exec{std::forward<ArgT>(args)...};
       src_exec.process();
       src_exec.end();
@@ -65,10 +69,11 @@ struct PostPlaceHolder {
 
 template<typename Parent, typename ChildExecution,
   typename P = traits::remove_cvr_t<Parent>,
+  typename C = traits::remove_cvr_t<ChildExecution>,
   std::enable_if_t<traits::is_pipe_operator<P>::value>* = nullptr,
-  std::enable_if_t<traits::is_execution<ChildExecution>::value>* = nullptr>
+  std::enable_if_t<traits::is_execution<C>::value>* = nullptr>
 inline decltype(auto) operator | (Parent&& parent, ChildExecution&& exec) {
-  return PostPlaceHolder<P, ChildExecution>{
+  return PostPlaceHolder<P, C>{
     std::forward<Parent>(parent),
     std::forward<ChildExecution>(exec)
   }.execute();

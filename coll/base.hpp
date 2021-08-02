@@ -75,6 +75,12 @@ struct ExecutionLike : public ExecutionBase /* or public ChildExecutionLike */ {
   DefaultControl control = default_control();
 
   /**
+   * Actions to take before the first input element has been `process`ed.
+   * We can call the child to `start` by Child::start.
+   **/
+  inline void start() {}
+
+  /**
    * To process each input element. Required. We can pass elements to child by Child::process.
    **/
   inline void process(Input) {}
@@ -131,6 +137,26 @@ auto execution_has_result(int) -> decltype(
 template<typename T>
 std::false_type execution_has_result(...);
 
+template<typename T>
+auto execution_has_start(int) -> decltype(
+  // has member function `result`
+  std::declval<T&>().start(),
+  std::true_type{}
+);
+
+template<typename T>
+std::false_type execution_has_start(...);
+
+template<typename T>
+auto execution_has_end(int) -> decltype(
+  // has member function `result`
+  std::declval<T&>().end(),
+  std::true_type{}
+);
+
+template<typename T>
+std::false_type execution_has_end(...);
+
 template<typename T, typename Cond>
 auto satisfy(Cond cond) -> decltype(
   cond(std::declval<T&>()),
@@ -152,6 +178,12 @@ using operator_control_t = typename traits::remove_cvr_t<decltype(std::declval<T
 
 template<typename T>
 using execution_has_result = decltype(details::execution_has_result<T>(0));
+
+template<typename T>
+using execution_has_start = decltype(details::execution_has_start<T>(0));
+
+template<typename T>
+using execution_has_end = decltype(details::execution_has_end<T>(0));
 
 template<typename T, bool enable = true>
 struct operator_output {

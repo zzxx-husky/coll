@@ -70,6 +70,8 @@ struct Print {
     auto_val(printed, false);
     auto_val(control, default_control());
 
+    inline void start() {}
+
     inline void process(InputType e) {
       if (likely(printed)) {
         args.out << args.delimiter;
@@ -96,6 +98,7 @@ struct Print {
     template<typename Exec, typename ... ArgT>
     static void execute(ArgT&& ... args) {
       auto exec = Exec(std::forward<ArgT>(args)...);
+      exec.start();
       exec.process();
       exec.end();
     }

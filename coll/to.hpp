@@ -76,6 +76,8 @@ struct To {
     auto_val(container, args.template get_container<InputType>());
     auto_val(control,   default_control());
 
+    inline void start() {}
+
     inline void process(InputType e) {
       if constexpr (Args::ins_by_copy) {
         container_utils::insert(container, std::forward<InputType>(e));
@@ -101,6 +103,7 @@ struct To {
     template<typename Exec, typename ... ArgT>
     static decltype(auto) execute(ArgT&& ... args) {
       auto exec = Exec(std::forward<ArgT>(args)...);
+      exec.start();
       exec.process();
       exec.end();
       return exec.result();

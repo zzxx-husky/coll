@@ -32,6 +32,8 @@ struct Head {
     ResultType res;
     auto_val(control, default_control());
 
+    inline void start() {}
+
     inline void process(InputType e) {
       res = std::forward<InputType>(e);
       control.break_now = true;
@@ -46,6 +48,7 @@ struct Head {
     template<typename Exec, typename ... ArgT>
     static auto execute(ArgT&& ... args) {
       auto exec = Exec(std::forward<ArgT>(args)...);
+      exec.start();
       exec.process();
       exec.end();
       return std::move(exec.result());

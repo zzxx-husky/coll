@@ -34,7 +34,7 @@ GTEST_TEST(Iterate, BoundedArray) {
 GTEST_TEST(Iterate, PostIterate) {
   auto vec = std::vector<int>{1, 2, 3, 4, 5, 6, 7, 8, 9};
   int c = 0;
-  vec | coll::PostIterate()
+  vec | coll::iterate()
       | coll::foreach([&](auto&& i) {
         EXPECT_EQ(++c, i);
       });
@@ -44,14 +44,41 @@ GTEST_TEST(Iterate, PostIterate) {
 GTEST_TEST(Iterate, PostIterateExecutable) {
   auto x = coll::place_holder<int>() | coll::to<std::vector>();
   int c = 0;
-  auto y = x | coll::PostIterate()
+  auto y = x | coll::iterate()
     | coll::foreach([&](auto&& i) {
       EXPECT_EQ(++c, i);
     });
   int a[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+  y.start();
   for (int i = 0; i < 10; i++) {
     y.process(a[i]);
   }
   y.end();
   EXPECT_EQ(c, 10);
+}
+
+GTEST_TEST(Iterate, PostPlaceHolder) {
+  auto x = coll::place_holder<int>()
+    | coll::to<std::vector>();
+  auto y = coll::place_holder<int>()
+    | coll::map(anony_cc(_ + 1));
+  auto z = coll::range(10) | y | x;
+  EXPECT_EQ(z.size(), 10);
+  for (int i = 0; i < 10; i++) {
+    EXPECT_EQ(i + 1, z[i]);
+  }
+}
+
+GTEST_TEST(Iterate, PostPlaceHolder2) {
+  auto x = coll::place_holder<int>()
+    | coll::to<std::vector>();
+  auto y = coll::place_holder<int>()
+    | coll::map(anony_cc(_ + 1));
+  auto w = coll::place_holder<int>()
+    | coll::map(anony_cc(_));
+  auto z = coll::range(10) | w | y | x;
+  EXPECT_EQ(z.size(), 10);
+  for (int i = 0; i < 10; i++) {
+    EXPECT_EQ(i + 1, z[i]);
+  }
 }

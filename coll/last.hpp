@@ -34,6 +34,8 @@ struct Last {
       res = std::forward<InputType>(e);
     }
 
+    inline void start() {}
+
     inline void end() {}
 
     inline auto& result() { return res; }
@@ -43,6 +45,7 @@ struct Last {
     template<typename Exec, typename ... ArgT>
     static auto execute(ArgT&& ... args) {
       auto exec = Exec(std::forward<ArgT>(args)...);
+      exec.start();
       exec.process();
       exec.end();
       return std::move(exec.result());

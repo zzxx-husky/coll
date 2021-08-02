@@ -20,6 +20,7 @@
 #include "groupby.hpp"
 #include "init_tail.hpp"
 #include "inspect.hpp"
+#include "link.hpp"
 #include "map.hpp"
 // #include "parallel.hpp"
 // #include "parallel_partition.hpp"

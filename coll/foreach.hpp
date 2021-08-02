@@ -29,6 +29,8 @@ struct ForeachExecution : public ExecutionBase {
   Args args;
   auto_val(control, default_control());
 
+  inline void start() {}
+
   inline void process(Input e) {
     args.action(std::forward<Input>(e));
   }

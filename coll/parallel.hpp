@@ -104,12 +104,16 @@ struct Parallel {
     Execution(const Args& args, X&& ... x):
       args(args),
       Child(std::forward<X>(x)...) {
+    }
+
+    inline void start() {
       auto& actor_group = this->args.get_actor_group();
       std::vector<zaf::Actor> executors(args.parallelism);
       for (int i = 0; i < args.parallelism; i++) {
         executors[i] = actor_group.template spawn<ParallelExecutor>(this->args, i);
       }
       shuffler.initialize(actor_group, executors);
+      Child::start();
     }
 
     Args args;
