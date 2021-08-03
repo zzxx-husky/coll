@@ -28,6 +28,7 @@
 #include "reverse.hpp"
 #include "sort.hpp"
 #include "split.hpp"
+#include "take_while.hpp"
 #include "unique.hpp"
 #include "window.hpp"
 #include "zip_with_index.hpp"
