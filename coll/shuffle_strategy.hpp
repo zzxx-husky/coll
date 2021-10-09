@@ -40,7 +40,7 @@ public:
 
 private:
   std::vector<zaf::Actor> executors;
-  zaf::ScopedActor forwarder;
+  zaf::ScopedActor<zaf::ActorBehavior> forwarder;
 };
 
 template<typename I, typename KeyBy>
@@ -82,7 +82,7 @@ public:
 
 private:
   std::vector<zaf::Actor> executors;
-  zaf::ScopedActor forwarder;
+  zaf::ScopedActor<zaf::ActorBehavior> forwarder;
   KeyBy key_by;
   std::hash<KeyType> hasher{};
 };
@@ -181,7 +181,7 @@ private:
     std::vector<zaf::Actor> executors;
   };
 
-  zaf::ScopedActor forwarder;
+  zaf::ScopedActor<zaf::ActorBehavior> forwarder;
   zaf::Actor dispatcher;
 };
 } // namespace details
