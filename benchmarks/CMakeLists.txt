@@ -7,4 +7,6 @@ macro(add symbol file)
   target_link_libraries(${symbol} ${ExtLibs} ${BasicLibs})
 endmacro()
 
-add(ParallelSort parallel_sort.cpp)
+if (${ENABLE_PARALLEL})
+  add(ParallelSort parallel_sort.cpp)
+endif()

@@ -1,4 +1,5 @@
 #pragma once
+#if ENABLE_PARALLEL
 
 #include "parallel.hpp"
 #include "partition.hpp"
@@ -52,3 +53,4 @@ inline auto operator | (Parent&& parent, Args&& args) {
       .execute_by(*args.actor_group);
 }
 } // namespace coll
+#endif

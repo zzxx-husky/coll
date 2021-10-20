@@ -1,4 +1,5 @@
 #pragma once
+#if ENABLE_PARALLEL
 
 #include <vector>
 
@@ -121,13 +122,13 @@ struct Parallel {
     auto_val(shuffler, args.shuffle_strategy.template create<QueueInputType>());
     // typename Args::template ShuffleStratType<QueueInputType> shuffler = args.create();
 
-    struct ParallelExecutor : public zaf::ActorBehavior {
+    struct ParallelExecutor : public zaf::ActorBehaviorX {
       ParallelExecutor(Args& args, size_t pid):
         args(args), pid(pid) {
       }
 
       static auto ctor_partition_pipeline(Args& args, size_t pid,
-        zaf::ActorBehavior* this_actor, zaf::Actor& res_collector) {
+        zaf::ActorBehaviorX* this_actor, zaf::Actor& res_collector) {
         if constexpr (IsPipeOperator) {
           return args.pipeline_builder(pid, place_holder<QueueInputType&>())
             | foreach([=, &res_collector](OutputType o) {
@@ -141,7 +142,7 @@ struct Parallel {
       Args& args;
       size_t pid;
       zaf::Actor res_collector;
-      zaf::ActorBehavior* this_actor = this;
+      zaf::ActorBehaviorX* this_actor = this;
       auto_val(partition_pipeline, ctor_partition_pipeline(args, pid, this_actor, res_collector));
 
       void terminate() {
@@ -235,3 +236,5 @@ operator | (Parent&& parent, Args&& args) {
   return {std::forward<Parent>(parent), std::forward<Args>(args)};
 }
 } // namespace coll
+
+#endif

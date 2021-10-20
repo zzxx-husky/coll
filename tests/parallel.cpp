@@ -1,3 +1,5 @@
+#if ENABLE_PARALLEL
+
 #include "coll/coll.hpp"
 #include "coll/parallel_coll.hpp"
 #include "gtest/gtest.h"
@@ -114,3 +116,5 @@ GTEST_TEST(Parallel, ParallelPartitionAlias) {
 
   EXPECT_EQ(es, s);
 }
+
+#endif

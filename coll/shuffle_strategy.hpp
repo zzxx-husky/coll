@@ -1,4 +1,5 @@
 #pragma once
+#if ENABLE_PARALLEL
 
 #include <deque>
 #include <vector>
@@ -12,7 +13,7 @@ template<typename I>
 class RandomAssign {
 public:
   void initialize(zaf::ActorGroup& group, std::vector<zaf::Actor>& executors) {
-    forwarder = group.create_scoped_actor();
+    forwarder = group.create_scoped_actor<zaf::ActorBehaviorX>();
     this->executors = executors;
     for (auto& e : executors) {
       forwarder->send(e, codes::Downstream, forwarder->get_self_actor());
@@ -40,7 +41,7 @@ public:
 
 private:
   std::vector<zaf::Actor> executors;
-  zaf::ScopedActor<zaf::ActorBehavior> forwarder;
+  zaf::ScopedActor<zaf::ActorBehaviorX> forwarder;
 };
 
 template<typename I, typename KeyBy>
@@ -53,7 +54,7 @@ public:
   }
 
   void initialize(zaf::ActorGroup& group, std::vector<zaf::Actor>& executors) {
-    forwarder = group.create_scoped_actor();
+    forwarder = group.create_scoped_actor<zaf::ActorBehaviorX>();
     this->executors = executors;
     for (auto& e : executors) {
       forwarder->send(e, codes::Downstream, forwarder->get_self_actor());
@@ -82,7 +83,7 @@ public:
 
 private:
   std::vector<zaf::Actor> executors;
-  zaf::ScopedActor<zaf::ActorBehavior> forwarder;
+  zaf::ScopedActor<zaf::ActorBehaviorX> forwarder;
   KeyBy key_by;
   std::hash<KeyType> hasher{};
 };
@@ -91,7 +92,7 @@ template<typename I>
 class OnDemandAssign {
 public:
   inline void initialize(zaf::ActorGroup& group, std::vector<zaf::Actor>& executors) {
-    forwarder = group.create_scoped_actor();
+    forwarder = group.create_scoped_actor<zaf::ActorBehaviorX>();
     dispatcher = group.spawn<Dispatcher>(executors, forwarder->get_self_actor());
   }
 
@@ -114,7 +115,7 @@ public:
   }
 
 private:
-  class Dispatcher : public zaf::ActorBehavior {
+  class Dispatcher : public zaf::ActorBehaviorX {
   public:
     Dispatcher(const std::vector<zaf::Actor>& executors, zaf::Actor res_collector):
       executors(executors),
@@ -181,7 +182,7 @@ private:
     std::vector<zaf::Actor> executors;
   };
 
-  zaf::ScopedActor<zaf::ActorBehavior> forwarder;
+  zaf::ScopedActor<zaf::ActorBehaviorX> forwarder;
   zaf::Actor dispatcher;
 };
 } // namespace details
@@ -216,3 +217,4 @@ struct OnDemandAssign {
 };
 } // namespace shuffle
 } // namespace coll
+#endif
