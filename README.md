@@ -1,5 +1,7 @@
 # Coll
 
+[![CMake](https://github.com/zzxx-husky/coll/actions/workflows/cmake.yml/badge.svg)](https://github.com/zzxx-husky/coll/actions/workflows/cmake.yml)
+
 A set of APIs for constructing a pipeline for data processing based on c++17.
 Data processing is expressed as a pipeline of `operator`s connected by `|`. 
 
