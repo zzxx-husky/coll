@@ -29,7 +29,7 @@ if (${ENABLE_PARALLEL})
   if (${ZAF_USE_PHMAP})
     add_definitions(-DENABLE_PHMAP=1)
   endif()
-  message("-- ENABLE_PHMAP: " ${ENABLE_PHMAP})
+  message("-- ENABLE_PHMAP: " ${ZAF_USE_PHMAP})
 endif()
 
 if (${ENABLE_TEST})

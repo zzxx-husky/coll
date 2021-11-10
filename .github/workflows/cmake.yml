@@ -27,28 +27,31 @@ jobs:
 
     - name: Install dependencies
       run: |
-        # install dependencies of ZAF
-        ${{github.workspace}}/scripts/install_zaf.sh ${{github.workspace}}/../
-        source ${HOME}/.bashrc
         # install ZAF
-        ${{github.workspace}}/scripts/install_zaf.sh ${{github.workspace}}/../
-        source ${HOME}/.bashrc
+        cd ${{github.workspace}}/../
+        git clone --depth 1 https://github.com/zzxx-husky/inst_scripts
+        ./inst_scripts/install_coll.sh --deps-only
+        cd ${{github.workspace}}
+
+        # install Valgrind
+        echo "Install Valgrind"
+        sudo apt install -y valgrind
 
     - name: Configure CMake
       # Configure CMake in a 'release' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
       # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
       run: |
+        source ${{github.workspace}}/../inst_scripts/instrc.sh
         echo ${ZMQ_ROOT}
         echo ${GTEST_ROOT}
         echo ${GLOG_ROOT}
         echo ${PHMAP_ROOT}
         echo ${ZAF_ROOT}
-        cmake -B ${{github.workspace}}/release -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+        cmake -S . -B ${{github.workspace}}/release -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
 
     - name: Build
-      working-directory: ${{github.workspace}}/release
       # Build your program with the given configuration
-      run: make all -j4
+      run: cmake --build ${{github.workspace}}/release -j4
 
     - name: Test
       working-directory: ${{github.workspace}}/release
@@ -74,9 +77,10 @@ jobs:
 
     - name: BuildMini
       run: |
-        cmake -B ${{github.workspace}}/release_mini -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DENABLE_TEST=false -DENABLE_PARALLEL=false
+        source ${{github.workspace}}/../inst_scripts/instrc.sh
+        cmake -S . -B ${{github.workspace}}/release_mini -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DENABLE_TEST=false -DENABLE_PARALLEL=false
+        cmake --build ${{github.workspace}}/release_mini -j4
         cd ${{github.workspace}}/release_mini
-        make all -j4
         echo "Run HelloWorld"
         ./examples/HelloWorld
         echo "Run Calendar"
@@ -91,6 +95,5 @@ jobs:
     - name: Valgrind
       working-directory: ${{github.workspace}}/release
       run: |
-        sudo apt install -y valgrind
         valgrind ./examples/HelloWorld
         valgrind ./examples/Calendar
