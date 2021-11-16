@@ -6,7 +6,7 @@ defaults:
 
 on:
   push:
-    branches: [ master ]
+    branches: [ master, alpha ]
   pull_request:
     branches: [ master ]
 
@@ -27,15 +27,16 @@ jobs:
 
     - name: Install dependencies
       run: |
-        # install ZAF
+        echo "install ZAF"
         cd ${{github.workspace}}/../
         git clone --depth 1 https://github.com/zzxx-husky/inst_scripts
         ./inst_scripts/install_coll.sh --deps-only
         cd ${{github.workspace}}
 
-        # install Valgrind
-        echo "Install Valgrind"
-        sudo apt install -y valgrind
+        echo "Install Clang"
+        sudo apt install clang
+        clang --version
+        clang++ --version
 
     - name: Configure CMake
       # Configure CMake in a 'release' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
@@ -57,23 +58,23 @@ jobs:
       working-directory: ${{github.workspace}}/release
       # Execute tests defined by the CMake configuration.
       # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
-      run: ./tests/Tests
+      run: timeout 10 ./tests/Tests
 
     - name: Examples
       working-directory: ${{github.workspace}}/release
       run: |
         echo "Run HelloWorld"
-        ./examples/HelloWorld
+        timeout 10 ./examples/HelloWorld
         echo "Run Calendar"
-        ./examples/Calendar
+        timeout 10 ./examples/Calendar
         echo "Run FirstNMax"
-        ./examples/FirstNMax
+        timeout 10 ./examples/FirstNMax
         echo "Run TopkFreqWords"
-        ./examples/TopkFreqWords
+        timeout 10 ./examples/TopkFreqWords
         echo "RUn SortUnique"
-        ./examples/SortUnique
+        timeout 10 ./examples/SortUnique
         echo "ParallelSort"
-        ./benchmarks/ParallelSort
+        timeout 20 ./benchmarks/ParallelSort
 
     - name: BuildMini
       run: |
@@ -82,18 +83,38 @@ jobs:
         cmake --build ${{github.workspace}}/release_mini -j4
         cd ${{github.workspace}}/release_mini
         echo "Run HelloWorld"
-        ./examples/HelloWorld
+        timeout 10 ./examples/HelloWorld
         echo "Run Calendar"
-        ./examples/Calendar
+        timeout 10 ./examples/Calendar
         echo "Run FirstNMax"
-        ./examples/FirstNMax
+        timeout 10 ./examples/FirstNMax
         echo "Run TopkFreqWords"
-        ./examples/TopkFreqWords
+        timeout 10 ./examples/TopkFreqWords
         echo "RUn SortUnique"
-        ./examples/SortUnique
+        timeout 10 ./examples/SortUnique
 
-    - name: Valgrind
+    - name: Gperftools Heap Profile
       working-directory: ${{github.workspace}}/release
       run: |
-        valgrind ./examples/HelloWorld
-        valgrind ./examples/Calendar
+        PPROF_PATH="$(which pprof)" HEAPCHECK=strict timeout 30 ./examples/HelloWorld
+        PPROF_PATH="$(which pprof)" HEAPCHECK=strict timeout 30 ./examples/Calendar
+
+    - name: Compile with Clang
+      run: |
+        source ${{github.workspace}}/../inst_scripts/instrc.sh
+        cmake -S . -B ${{github.workspace}}/release_mini -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+        cmake --build ${{github.workspace}}/release_mini -j4
+        cd ${{github.workspace}}/release_mini
+        echo "Run HelloWorld"
+        timeout 10 ./examples/HelloWorld
+        echo "Run Calendar"
+        timeout 10 ./examples/Calendar
+        echo "Run FirstNMax"
+        timeout 10 ./examples/FirstNMax
+        echo "Run TopkFreqWords"
+        timeout 10 ./examples/TopkFreqWords
+        echo "RUn SortUnique"
+        timeout 10 ./examples/SortUnique
+      env:
+        CC: clang
+        CXX: clang++
