@@ -13,17 +13,18 @@ struct GroupByArgsTag {};
 
 template<typename KeyBy,
   typename ValueBy = Identity::type,
-  typename Aggregator = ContainerBuilder<std::vector>,
-  typename AggregateTo = DefaultContainerInserter::type,
+  typename Aggregator = NullArg,
+  typename AggregateTo = NullArg,
   bool CacheByRef = false,
   bool Adjacenct = false>
 struct GroupByArgs {
   using TagType = GroupByArgsTag;
+  using AggregatorType = Aggregator;
 
   KeyBy keyby;
   ValueBy valby = Identity::value;
   Aggregator aggregator;
-  AggregateTo aggregate_to = DefaultContainerInserter::value;
+  AggregateTo aggregate_to;
 
   // used by user
   template<typename AnotherAggregator, typename AnotherAggregateTo>
@@ -61,6 +62,10 @@ struct GroupByArgs {
 
   inline auto count() {
     return aggregate(size_t(0), [](auto& cnt, auto&&) { ++cnt; });
+  }
+
+  inline auto to_vector() {
+    return aggregate(ContainerBuilder<std::vector>{}, DefaultContainerInserter::value);
   }
 
   // used by operator
@@ -112,22 +117,37 @@ template<typename Parent, typename Args,
 inline auto operator | (Parent&& parent, Args&& args) {
   using InputType = typename P::OutputType;
   using KeyType = typename A::template KeyType<InputType>;
-  using AggregatorType = decltype(std::declval<A&>().template get_aggregator<InputType>());
-  if constexpr (A::template is_builder<InputType>()) {
-    return parent | aggregate(std::unordered_map<KeyType, AggregatorType>(),
+  if constexpr (std::is_same_v<typename A::AggregatorType, NullArg>) {
+    using ValType = decltype(std::declval<A&>().valby(std::declval<InputType>()));
+    return parent | aggregate(std::unordered_map<KeyType, ValType>{},
                       [&](auto& map, InputType e) {
-                        auto&& key = args.keyby(e);
+                        auto key = args.keyby(e);
                         auto iter = map.find(key);
                         if (iter == map.end()) {
-                          iter = map.emplace(key, args.template get_aggregator<InputType>()).first;
+                          map.insert(std::forward<decltype(key)>(key), map.valby(e));
+                        } else {
+                          auto val = args.valby(e);
+                          iter->second = std::forward<decltype(val)>(val);
                         }
-                        args.aggregate_to(iter->second, args.valby(e));
                       });
   } else {
-    return parent | aggregate(std::unordered_map<KeyType, AggregatorType>(),
-                      [&](auto& map, InputType e) {
-                        args.aggregate_to(map[args.keyby(e)], args.valby(e));
-                      });
+    using ValType = decltype(std::declval<A&>().template get_aggregator<InputType>());
+    if constexpr (A::template is_builder<InputType>()) {
+      return parent | aggregate(std::unordered_map<KeyType, ValType>(),
+                        [&](auto& map, InputType e) {
+                          auto&& key = args.keyby(e);
+                          auto iter = map.find(key);
+                          if (iter == map.end()) {
+                            iter = map.emplace(key, args.template get_aggregator<InputType>()).first;
+                          }
+                          args.aggregate_to(iter->second, args.valby(e));
+                        });
+    } else {
+      return parent | aggregate(std::unordered_map<KeyType, ValType>(),
+                        [&](auto& map, InputType e) {
+                          args.aggregate_to(map[args.keyby(e)], args.valby(e));
+                        });
+    }
   }
 }
 

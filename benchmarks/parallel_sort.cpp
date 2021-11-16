@@ -102,7 +102,8 @@ int main() {
             auto par_begin = ints3.size() / M * pid + std::min(pid, ints3.size() % M);
             auto par_end = par_begin + ints3.size() / M + (pid < ints3.size() % M);
             return coll::iterate(ints3.begin() + par_begin, ints3.begin() + par_end)
-              | coll::groupby(anonyr_cc(std::lower_bound(seeds.begin(), seeds.end(), _) - seeds.begin()));
+              | coll::groupby(anonyr_cc(std::lower_bound(seeds.begin(), seeds.end(), _) - seeds.begin()))
+                  .to_vector();
           });
         })
         .execute_by(actor_engine)

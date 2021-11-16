@@ -71,6 +71,7 @@ void make_calendar(int year, int months_per_row) {
     | coll::groupby(anony_rc(_.first))
         .valueby(anony_rc(_.second))
         .adjacent()
+        .to_vector()
     // [(month, [week str]) * months_per_row]
     | coll::window(months_per_row)
     | coll::println().format([&](auto& out, auto& w) mutable {

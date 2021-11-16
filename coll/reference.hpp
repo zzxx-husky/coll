@@ -54,8 +54,19 @@ public:
   inline operator bool() const noexcept { return bool(ref); }
   inline bool has_value() const noexcept { return bool(ref); }
 
-  inline T& value() { return *ref; }
-  inline const T& value() const { return *ref; }
+  inline T& value() {
+    if (ref == nullptr) {
+      throw std::runtime_error("Attempt to use nullptr reference.");
+    }
+    return *ref;
+  }
+
+  inline const T& value() const {
+    if (ref == nullptr) {
+      throw std::runtime_error("Attempt to use nullptr reference.");
+    }
+    return *ref;
+  }
 
   template<typename U>
   inline auto value_or(U&& default_val) {
@@ -64,13 +75,36 @@ public:
       : std::forward<U>(default_val);
   }
 
-  inline T& operator* () { return *ref; }
-  inline const T& operator* () const { return *ref; }
+  inline T& operator* () {
+    if (ref == nullptr) {
+      throw std::runtime_error("Attempt to use nullptr reference.");
+    }
+    return *ref;
+  }
 
-  inline T* operator-> () { return ref; }
-  inline const T* operator-> () const { return ref; }
+  inline const T& operator* () const {
+    if (ref == nullptr) {
+      throw std::runtime_error("Attempt to use nullptr reference.");
+    }
+    return *ref;
+  }
+
+  inline T* operator-> () {
+    if (ref == nullptr) {
+      throw std::runtime_error("Attempt to use nullptr reference.");
+    }
+    return ref;
+  }
+
+  inline const T* operator-> () const {
+    if (ref == nullptr) {
+      throw std::runtime_error("Attempt to use nullptr reference.");
+    }
+    return ref;
+  }
 
   inline void swap(optional<T&>& other) { std::swap(ref, other.ref); }
+
   inline void reset() { ref = nullptr; }
 
   template<typename U>
@@ -84,18 +118,26 @@ public:
 
 template<typename T>
 inline bool operator<(const optional<T&>& a, const optional<T&>& b) {
-  return *a < *b;
+  return bool(a)
+    ? bool(b)
+      ? *a < *b // both valid
+      : false   // a is not empty > b is empty
+    : !bool(b); // b is empty => equal; b is not empty => a < b;
 }
 
 template<typename T>
 inline bool operator==(const optional<T&>& a, const optional<T&>& b) {
-  return *a == *b;
+  return bool(a)
+    ? bool(b) && *a == *b
+    : !bool(b);
 }
 
 template<typename T>
 struct hash<optional<T&>> {
   inline size_t operator()(const optional<T&>& r) const {
-    return std::hash<T>{}(*r);
+    return bool(r)
+      ? 0
+      : std::hash<T>{}(*r);
   }
 };
 } // namespace std
