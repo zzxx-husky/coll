@@ -11,16 +11,22 @@ private:
 public:
   optional() = default;
   optional(std::nullopt_t) {};
+  optional(const optional<T&>&) = default;
 
-  template<typename U = T>
   optional(optional<T&>&& other) noexcept:
     ref(other.ref) {
     other.ref = nullptr;
   }
 
-  template<typename U = T>
+  template<typename U>
+  optional(const optional<U&>& other):
+    ref(&other.value()) {
+  }
+
+  template<typename U>
   optional(optional<U&>&& other):
-    ref(other.ref) {
+    ref(&other.value()) {
+    other = std::nullopt;
   }
 
   template<typename U,
