@@ -42,6 +42,7 @@ struct ForeachExecution : public ExecutionBase {
   template<typename Exec, typename ... ArgT>
   static void execute(ArgT&& ... args) {
     auto exec = Exec(std::forward<ArgT>(args)...);
+    exec.start();
     exec.process();
     exec.end();
   };

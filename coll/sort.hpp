@@ -41,7 +41,7 @@ struct Sort {
     // 4. End
     inline void sort() {
       using Ctrl = traits::operator_control_t<Child>;
-      auto comparator = args.template get_comparator<InputType, Ctrl::is_reversed>();
+      auto comparator = args.template get_comparator<InputType&, Ctrl::is_reversed>();
       if constexpr (Args::is_cache_by_ref) {
         std::sort(elems.begin(), elems.end(), [&](auto& ref_a, auto& ref_b) {
           return comparator(*ref_a, *ref_b);

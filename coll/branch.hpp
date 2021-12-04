@@ -1,7 +1,6 @@
 #pragma once
 
 #include "base.hpp"
-#include "place_holder.hpp"
 
 namespace coll {
 struct BranchArgsTag {};

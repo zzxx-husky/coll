@@ -124,7 +124,7 @@ inline auto operator | (Parent&& parent, Args&& args) {
                         auto key = args.keyby(e);
                         auto iter = map.find(key);
                         if (iter == map.end()) {
-                          map.insert(std::forward<decltype(key)>(key), map.valby(e));
+                          map.emplace(std::forward<decltype(key)>(key), args.valby(e));
                         } else {
                           auto val = args.valby(e);
                           iter->second = std::forward<decltype(val)>(val);

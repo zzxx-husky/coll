@@ -23,12 +23,12 @@ struct Range {
     inline void process() {
       using Ctrl = traits::operator_control_t<Child>;
       if constexpr (Ctrl::is_reversed) {
-        for (auto i = right; i != left && !this->control.break_now;) {
+        for (auto i = right; left < i && !this->control.break_now;) {
           --i;
           Child::process();
         }
       } else {
-        for (auto i = left; i != right && !this->control.break_now; ++i) {
+        for (auto i = left; i < right && !this->control.break_now; ++i) {
           Child::process(i);
         }
       }

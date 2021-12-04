@@ -1,4 +1,5 @@
 #include <unordered_set>
+#include <vector>
 
 #include "coll/coll.hpp"
 #include "gtest/gtest.h"
