@@ -1,5 +1,6 @@
 #pragma once
 
+#include <ostream>
 #include <vector>
 
 #include "reference.hpp"
@@ -137,6 +138,8 @@ public:
         out << ", " << *i;
       }
       out << ']';
+    } else {
+      out << "[]";
     }
     return out;
   }

@@ -102,9 +102,9 @@ jobs:
     - name: Compile with Clang
       run: |
         source ${{github.workspace}}/../inst_scripts/instrc.sh
-        cmake -S . -B ${{github.workspace}}/release_mini -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
-        cmake --build ${{github.workspace}}/release_mini -j4
-        cd ${{github.workspace}}/release_mini
+        cmake -S . -B ${{github.workspace}}/release_clang -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+        cmake --build ${{github.workspace}}/release_clang -j4
+        cd ${{github.workspace}}/release_clang
         echo "Run HelloWorld"
         timeout 10 ./examples/HelloWorld
         echo "Run Calendar"
