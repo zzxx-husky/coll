@@ -12,8 +12,7 @@
 #include "iterate.hpp"
 #include "range.hpp"
 // pipeline
-#include "all.hpp"
-#include "any.hpp"
+#include "any_all.hpp"
 #include "branch.hpp"
 #include "concat.hpp"
 #include "distinct.hpp"
