@@ -86,6 +86,37 @@ struct IterateByIterable {
   }
 };
 
+template<typename Opt>
+struct IterateOptional {
+  using OutputType = decltype(*std::declval<Opt&>());
+
+  Opt optional;
+
+  template<typename Child>
+  struct Execution : public Child {
+    Opt optional;
+
+    template<typename ... X>
+    Execution(const Opt& optional, X&& ... x):
+      optional(optional),
+      Child(std::forward<X>(x)...) {
+    }
+
+    inline void process() {
+      if (!this->control.break_now && bool(optional)) {
+        Child::process(*optional);
+      }
+    }
+  };
+
+  template<typename Child, typename ... X>
+  inline decltype(auto) wrap(X&& ... x) {
+    return Child::template execute<Execution<Child>>(
+      optional, std::forward<X>(x)...
+    );
+  }
+};
+
 template<typename IsEmpty, typename Next>
 struct Generator {
   using OutputType = typename traits::invocation<Next>::result_t;

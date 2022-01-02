@@ -82,3 +82,21 @@ GTEST_TEST(Iterate, PostPlaceHolder2) {
     EXPECT_EQ(i + 1, z[i]);
   }
 }
+
+GTEST_TEST(Iterate, Optional) {
+  std::optional<int> r;
+  coll::range(10)
+    | coll::filter(anony_cc(_ % 2 == 1))
+    | coll::head()
+    | coll::iterate()
+    | coll::foreach(anonyr_av(r = _));
+  EXPECT_EQ(r, 1);
+
+  r = std::nullopt;
+  coll::range(10)
+    | coll::filter(anony_cc(false))
+    | coll::head()
+    | coll::iterate()
+    | coll::foreach(anonyr_av(r = _));
+  EXPECT_FALSE(bool(r));
+}

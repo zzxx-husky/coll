@@ -32,6 +32,7 @@
 #include "split.hpp"
 #include "take_while.hpp"
 #include "unique.hpp"
+#include "unwrap.hpp"
 #include "window.hpp"
 #include "zip_with_index.hpp"
 // sink
@@ -77,6 +78,12 @@ inline IterateByIterable<Coll> iterate(Coll&& c) {
   return {std::forward<Coll>(c)};
 }
 
+template<typename Opt,
+  std::enable_if_t<traits::is_optional<traits::remove_cvr_t<Opt>>::value>* = nullptr>
+inline IterateOptional<Opt> iterate(Opt&& o) {
+  return {std::forward<Opt>(o)};
+}
+
 // For temporal bounded array, keep the pointers of it because idk how to store a temporal array in a class
 // E.g., (int []){1, 2, 3}, or "123".
 template<typename T,
@@ -94,6 +101,12 @@ template<typename Coll,
   std::enable_if_t<traits::is_iterable<Coll>::value>* = nullptr>
 inline auto operator | (Coll&& c, PostIterate) {
   return iterate(std::forward<Coll>(c));
+}
+
+template<typename Opt,
+  std::enable_if_t<traits::is_optional<traits::remove_cvr_t<Opt>>::value>* = nullptr>
+inline auto operator | (Opt&& c, PostIterate) {
+  return iterate(std::forward<Opt>(c));
 }
 
 template<typename Execution,

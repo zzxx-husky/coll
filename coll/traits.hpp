@@ -209,5 +209,11 @@ struct builder<T, E, false> {
 
 template<auto x, typename Y>
 using is_instance_of = decltype(details::is_instance_of_impl<Y>(x));
+
+template<typename>
+struct is_optional : std::false_type {};
+
+template<typename T>
+struct is_optional<std::optional<T>> : std::true_type {};
 } // namespace traits
 } // namespace coll

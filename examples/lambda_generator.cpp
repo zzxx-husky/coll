@@ -35,7 +35,7 @@ int main() {
                         << std::left << std::setw(14) << output.second;
 
                     std::ostringstream body;
-                    body << (output.first[0] == 'v' ? "__VA_ARGS__" : "return (__VA_ARGS__);");
+                    body << (output.first[0] == 'v' ? "__VA_ARGS__;" : "return (__VA_ARGS__);");
 
                     { // without mutable
                       std::cout << "#define "

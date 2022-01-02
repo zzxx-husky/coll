@@ -49,9 +49,9 @@ generate(anony_c(rand()%100)).times(10)           branch(x)  <------------+     
                                           |                               |       println(i)  <--------+-- println.proc = (i) {              sort(sort_buf.begin(), sort_buf.end());
                                           +-- branch.end = () {           |     }                            cout << i;                      for (auto i : sort_buf) {
                                                 sort.end()     <----------+     println.end() <--------+   }                                   cout << i << "\n";
-                                                distinct.end()                }                        |                                     }
-                                              }                                                        +-- println.end = (){}              }()
-                                                                              distinct.end = () {      |
+                                                distinct.end() <----------+   }                        |                                     }
+                                              }                           |                            +-- println.end = (){}              }()
+                                                                          +-- distinct.end = () {      |
                                                                                 println.end() <--------+
                                                                               }
 ```
@@ -119,3 +119,4 @@ That is not done yet, but similar technique is applied for `reverse` operator, i
 + [Operator List](https://github.com/zzxx-husky/cpp-collection-api/wiki/OperatorList), which lists all the operators in `coll`.
 + [Range-v3](https://github.com/ericniebler/range-v3), which is the Range library for C++14/17/20, basis for C++20's std::ranges.
 + [rangeless](https://github.com/ast-al/rangeless), which has a good summary on many existing libraries that provide similar functionalies.
++ [pipes](https://github.com/joboccara/pipes), which provides small components for writing expressive code when working on collections.
