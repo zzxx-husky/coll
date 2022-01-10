@@ -3,6 +3,7 @@
 #include <vector>
 #include <utility>
 
+#include "aggregate.hpp"
 #include "base.hpp"
 #include "container_utils.hpp"
 #include "groupby_adjacent.hpp"
