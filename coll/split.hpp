@@ -75,13 +75,13 @@ struct Split {
     }
   };
 
-  template<typename Child, typename ... X>
+  template<ExecutionType ET, typename Child, typename ... X>
   inline decltype(auto) wrap(X&& ... x) {
     using Ctrl = traits::operator_control_t<Child>;
     static_assert(!Ctrl::is_reversed, "Spilt does not support reverse iteration. "
       "Consider to use `with_buffer()` for the closest downstream `reverse()` operator.");
     
-    return parent.template wrap<Execution<Child>, Args&, X...>(
+    return parent.template wrap<ET, Execution<Child>, Args&, X...>(
       args, std::forward<X>(x)...
     );
   }

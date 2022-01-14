@@ -62,22 +62,26 @@ struct IfElse {
     }
 
     Args args;
-    auto_val(control, default_control());
+    auto_val(ctrl, default_control());
+
+    inline auto& control() {
+      return ctrl;
+    }
 
     inline void process(InputType e) {
       if (args.condition(e)) {
-        if (likely(!A<IfChild>::control.break_now)) {
+        if (likely(!A<IfChild>::control().break_now)) {
           A<IfChild>::process(e);
         }
       } else {
-        if (likely(!B<ElseChild>::control.break_now)) {
+        if (likely(!B<ElseChild>::control().break_now)) {
           B<ElseChild>::process(e);
         }
       }
       if (unlikely(
-        A<IfChild>::control.break_now &&
-        B<ElseChild>::control.break_now)) {
-        control.break_now = true;
+        A<IfChild>::control().break_now &&
+        B<ElseChild>::control().break_now)) {
+        ctrl.break_now = true;
       }
     }
 
@@ -91,8 +95,6 @@ struct IfElse {
       B<ElseChild>::end();
     }
 
-    constexpr static ExecutionType execution_type = Run;
-
     template<typename Exec, typename ... ArgT>
     static decltype(auto) execute(ArgT&& ... args) {
       auto exec = Exec(std::forward<ArgT>(args)...);
@@ -102,7 +104,7 @@ struct IfElse {
     }
   };
 
-  template<typename IfChild, typename ... X>
+  template<ExecutionType ETIf, typename IfChild, typename ... X>
   struct WrapElse {
     using OutputType = InputType;
 
@@ -110,12 +112,18 @@ struct IfElse {
     Args& args;
     std::tuple<X...> x;
 
-    template<typename ElseChild, typename ... Y>
+    template<ExecutionType ETElse, typename ElseChild, typename ... Y>
     inline decltype(auto) wrap(Y&& ... y) {
+      constexpr ExecutionType ET = [&]() {
+        if constexpr (ETIf < ETElse) {
+          return ETIf;
+        } else {
+          return ETElse;
+        }
+      }();
       return parent.template wrap<
-        Execution<IfChild, ElseChild>, Args&, std::tuple<X...>>(
-        args, std::move(x),
-        std::forward_as_tuple(std::forward<Y>(y)...)
+        ET, Execution<IfChild, ElseChild>, Args&, std::tuple<X...>>(
+        args, std::move(x), std::forward_as_tuple(std::forward<Y>(y)...)
       );
     }
   };
@@ -126,9 +134,9 @@ struct IfElse {
     Parent& parent;
     Args& args;
 
-    template<typename IfChild, typename ... X>
+    template<ExecutionType ET, typename IfChild, typename ... X>
     inline decltype(auto) wrap(X&& ... x) {
-      return args.else_builder(WrapElse<IfChild, X...>{
+      return args.else_builder(WrapElse<ET, IfChild, X...>{
         parent, args,
         std::forward_as_tuple(std::forward<X>(x)...)
       });

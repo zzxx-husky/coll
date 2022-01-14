@@ -163,7 +163,7 @@ struct Parallel {
           },
           codes::Data - [this](QueueInputType& e) {
             partition_pipeline.process(e);
-            if (partition_pipeline.control.break_now) {
+            if (partition_pipeline.control().break_now) {
               terminate();
             }
           },
@@ -173,7 +173,7 @@ struct Parallel {
           codes::DataWithQuota - [this](QueueInputType& e, size_t w) {
             this->reply(codes::Quota, w);
             partition_pipeline.process(e);
-            if (partition_pipeline.control.break_now) {
+            if (partition_pipeline.control().break_now) {
               terminate();
             }
           },
@@ -203,7 +203,7 @@ struct Parallel {
       shuffler.dispatch(std::forward<InputType>(e));
       receive_results(true);
       if (num_termination == args.parallelism) {
-        this->control.break_now = true;
+        this->control().break_now = true;
       }
     }
 
@@ -215,12 +215,12 @@ struct Parallel {
     }
   };
 
-  template<typename Child, typename ... X>
+  template<ExecutionType ET, typename Child, typename ... X>
   inline decltype(auto) wrap(X&& ... x) {
     using Ctrl = traits::operator_control_t<Child>;
     static_assert(!Ctrl::is_reversed,
       "Parallel operator does not support reversion. Use `with_buffer()` for the nearest `reverse`");
-    return parent.template wrap<Execution<Child>, Args&, X...>(
+    return parent.template wrap<ET, Execution<Child>, Args&, X...>(
       args, std::forward<X>(x)...
     );
   }

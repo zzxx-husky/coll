@@ -15,22 +15,29 @@ struct ConcatArgs {
 };
 
 template<typename Parent,
-  std::enable_if_t<traits::is_pipe_operator<Parent>::value>* = nullptr>
-inline ConcatArgs<Parent> concat(Parent&& parent) {
+  typename P = traits::remove_cvr_t<Parent>,
+  std::enable_if_t<traits::is_pipe_operator<P>::value>* = nullptr>
+inline ConcatArgs<P> concat(Parent&& parent) {
   return {std::forward<Parent>(parent)};
 }
 
 class Left {
+private:
   Left() = default;
 public:
   const static Left value;
 };
 
+inline const Left Left::value{};
+
 class Right {
+private:
   Right() = default;
 public:
   const static Right value;
 };
+
+inline const Right Right::value{};
 
 template<typename Parent, typename Args>
 struct Concat {
@@ -42,15 +49,14 @@ struct Concat {
   Parent parent;
   Args args;
 
-  // X includes args to Parent1 and Y, XN = len(args to Parent1)
-  // Y includes args to Parent2 and Z, YN = len(args to Parent2)
-  // Z includes parent1& and args to Child, ZN = len(args to Child)
+  // [0, X) for Parent1, [X, Y) for Parent2, [Y + 1, Z) for Child
   template<typename Parent1, typename Parent2, typename Child,
-           size_t XN, size_t YN, size_t ZN>
+           size_t XN, size_t YN>
   struct Execution : public Parent1, public Parent2, public Child {
-    template<typename TupleXYZ>
-    Execution(TupleXYZ&& xyz): Execution(
-      std::forward<TupleXYZ>(xyz),
+    template<typename ... XYZ,
+      size_t ZN = sizeof ... (XYZ) - XN - YN - 1>
+    Execution(XYZ&& ... xyz): Execution(
+      std::forward_as_tuple(xyz ...),
       std::make_index_sequence<XN>{},
       std::make_index_sequence<YN>{},
       std::make_index_sequence<ZN>{}) {
@@ -59,14 +65,14 @@ struct Concat {
     template<typename TupleXYZ, size_t ... XI, size_t ... YI, size_t ... ZI>
     Execution(TupleXYZ&& xyz, std::index_sequence<XI...>, std::index_sequence<YI...>, std::index_sequence<ZI...>):
       Parent1(std::get<XI>(xyz)..., static_cast<Child&>(*this)),
-      Parent2(std::get<YI>(std::get<XN>(xyz))..., static_cast<Child&>(*this)),
-      Child  (std::get<ZI+1>(std::get<YN>(std::get<XN>(xyz)))...) {
+      Parent2(std::get<XN + YI>(xyz)..., static_cast<Child&>(*this)),
+      Child  (std::get<XN + YN + 1 + ZI>(xyz)...) {
     }
 
-    template<typename ... ArgT>
-    inline void process(ArgT&& ... args) {
-      Parent1::process(std::forward<ArgT>(args) ...);
-      Parent2::process(std::forward<ArgT>(args) ...);
+    // This is used to run the execution.
+    inline void process() {
+      Parent1::process();
+      Parent2::process();
     }
 
     // Invoke the first parent only
@@ -108,15 +114,22 @@ struct Concat {
     }
   };
 
-  template<typename Parent2, typename Child, size_t YN, size_t ZN>
+  template<ExecutionType ET2, typename Parent2,
+    ExecutionType ETChild, typename Child, size_t YN, size_t ZN>
   struct RemoveEnd1 {
     RemoveEnd1(Child& child):
       child(child),
-      control(child.control) {
+      ctrl(child.ctrl) {
     }
 
     Child& child;
-    typename traits::operator_control_t<Child>& control;
+    typename traits::operator_control_t<Child>& ctrl;
+
+    inline auto& control() {
+      return ctrl;
+    }
+
+    inline void start() {}
 
     inline void process(OutputType e) {
       child.process(std::forward<OutputType>(e));
@@ -124,25 +137,50 @@ struct Concat {
 
     inline void end() {}
 
-    constexpr static ExecutionType execution_type = Construct;
-
-    template<typename Parent1, typename ... XYZ, size_t XN = sizeof...(XYZ) - 1>
-    static auto execute(XYZ&& ... xyz) {
-      return Child::template execute<Execution<Parent1, Parent2, Child, XN, YN, ZN>>(
-        std::forward_as_tuple(std::forward<XYZ>(xyz)...)
-      );
-    };
+    template<ExecutionType ET1, typename Parent1, typename ... XYZ,
+      size_t XN = sizeof...(XYZ) - YN - 1 - ZN>
+    static decltype(auto) construct(XYZ&& ... xyz) {
+      static_assert(ET1 != Construct && ET2 != Construct);
+      if constexpr (ETChild == Construct) {
+        constexpr ExecutionType ET = [&]() {
+          if constexpr (ET1 == Execute && ET2 == Execute) {
+            return ExecutionType::Execute;
+          } else /* if constexpr (ET1 == Object || ET2 == Object) */ {
+            return ExecutionType::Object;
+          }
+        }();
+        return Child::template construct<ET, Execution<Parent1, Parent2, Child, XN, YN>>(
+          std::forward<XYZ>(xyz)...
+        );
+      } else if constexpr (ETChild == Execute) {
+        if constexpr (ET1 == Execute && ET2 == Execute) {
+          return Child::template execute<Execution<Parent1, Parent2, Child, XN, YN>>(
+            std::forward<XYZ>(xyz)...
+          );
+        } else /* if constexpr (ET1 == Object || ET2 == Object) */ {
+          return Execution<Parent1, Parent2, Child, XN, YN>(
+            std::forward<XYZ>(xyz)...
+          );
+        }
+      }
+    }
   };
 
-  template<typename Child, size_t ZN>
+  template<ExecutionType ETChild, typename Child, size_t ZN>
   struct RemoveEnd2 {
     RemoveEnd2(Child& child):
       child(child),
-      control(child.control) {
+      ctrl(child.ctrl) {
     }
 
     Child& child;
-    typename traits::operator_control_t<Child>& control;
+    typename traits::operator_control_t<Child>& ctrl;
+
+    inline auto& control() {
+      return ctrl;
+    }
+
+    inline void start() {}
 
     inline void process(OutputType e) {
       child.process(std::forward<OutputType>(e));
@@ -150,18 +188,18 @@ struct Concat {
 
     inline void end() {}
 
-    constexpr static ExecutionType execution_type = Construct;
-
-    template<typename Parent2, typename ... YZ, size_t YN = sizeof...(YZ) - 1>
-    static auto execute(YZ&& ... yz) {
-      auto tuple = std::forward_as_tuple(std::forward<YZ>(yz)...);
-      // [0, size(TupleYZ)-1) = [0, YN)
-      auto& parent1 = std::get<0>(std::get<YN>(tuple));
-      return parent1.template wrap<RemoveEnd1<Parent2, Child, YN, ZN>>(std::move(tuple));
+    template<ExecutionType ET2, typename Parent2, typename ... YZ,
+      size_t YN = sizeof...(YZ) - 1 - ZN>
+    static auto construct(YZ&& ... yz) {
+      // wrap parent1 which constructs RemoveEnd1
+      auto& parent1 = std::get<YN>(std::tie(yz ...));
+      return parent1.template wrap<ExecutionType::Construct,
+        RemoveEnd1<ET2, Parent2, ETChild, Child, YN, ZN>>(std::forward<YZ>(yz) ...);
     };
   };
 
-  template<typename Child, typename ... Z, size_t ZN = sizeof...(Z)>
+  template<ExecutionType ET,
+    typename Child, typename ... Z, size_t ZN = sizeof...(Z)>
   inline decltype(auto) wrap(Z&& ... z) {
     using Ctrl = traits::operator_control_t<Child>;
     auto& parent1 = [&]() -> auto& {
@@ -170,9 +208,9 @@ struct Concat {
     auto& parent2 = [&]() -> auto& {
       if constexpr (Ctrl::is_reversed) { return parent; } else { return args.parent; }
     }();
-    return parent2.template wrap<RemoveEnd2<Child, ZN>>(
-      std::forward_as_tuple(parent1, std::forward<Z>(z)...)
-    );
+    // wrap parent2 first which constructs a RemoveEnd2
+    return parent2.template wrap<ExecutionType::Construct,
+      RemoveEnd2<ET, Child, ZN>>(parent1, std::forward<Z>(z)...);
   }
 };
 

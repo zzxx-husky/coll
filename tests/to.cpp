@@ -105,3 +105,40 @@ GTEST_TEST(Container, ContainerBuilder) {
   container_builder<std::unordered_set>("unordered_set");
   container_builder<std::vector>("vector");
 }
+
+GTEST_TEST(Container, Iterator) {
+  unsigned count = 0;
+
+  std::vector<int> a;
+  coll::range(10)
+    | coll::inspect(anonyr_cv(count++))
+    | coll::to_iter(a.begin(), a.end());
+
+  EXPECT_EQ(count, 0);
+
+  a.resize(1);
+  coll::range(10)
+    | coll::inspect(anonyr_cv(count++))
+    | coll::to_iter(a.begin(), a.end());
+
+  EXPECT_EQ(count, 1);
+
+  count = 0;
+  a.resize(10);
+  auto iter = coll::range(10)
+    | coll::inspect(anonyr_cv(count++))
+    | coll::to_iter(a.begin());
+
+  EXPECT_EQ(count, 10);
+  EXPECT_EQ(iter, a.end());
+
+  count = 0;
+  a.resize(20);
+
+  iter = coll::range(10)
+    | coll::inspect(anonyr_cv(count++))
+    | coll::to_iter(a.begin());
+
+  EXPECT_EQ(count, 10);
+  EXPECT_EQ(iter, a.begin() + 10);
+}

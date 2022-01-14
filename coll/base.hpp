@@ -14,21 +14,22 @@ struct ExecutionBase {};
 
 enum ExecutionType {
   /**
-   * Construct means only to construct the execution object.
-   * The execution object will be outputed.
-   *
-   * A Construct execution in a child operator CANNOT be overrided by a Run execution in the parent operator.
-   * A Construct execution in a child operator can be inherited by a Construct execution in the parent operator.
+   * Construct tells that the construction of object will be handled by child.
+   * Child -> Parent
    **/
-  Construct,
+  Construct = 0,
   /**
-   * Run means that the constructed execution will be `process`ed and then `end`ed.
-   * Result of the execution will be outputed, if any.
-   *
-   * A Run execution in a child operator can be overrided by a Run execution in the parent operator.
-   * A Run execution in a child operator can be inherited by a Construct execution in the parent operator.
+   * Object means only to make the execution object.
+   * The execution object will be executed.
+   * Child -> Parent or Parent -> Child.
    **/
-  Run
+  Object = 1,
+  /**
+   * Execute means that the constructed execution will be `process`ed and then `end`ed.
+   * Result of the execution will be outputed, if any.
+   * Child -> Parent or Parent -> Child.
+   **/
+  Execute = 2
 };
 
 /**
@@ -72,7 +73,8 @@ struct ExecutionLike : public ExecutionBase /* or public ChildExecutionLike */ {
    * A sink execution must declare a `control` member.
    * A non-sink execution may inherit the `control` member from child Execution class, or declare a new and independent one.
    **/
-  DefaultControl control = default_control();
+  DefaultControl ctrl = default_control();
+  inline DefaultControl& control() { return ctrl; }
 
   /**
    * Actions to take before the first input element has been `process`ed.
@@ -98,14 +100,12 @@ struct ExecutionLike : public ExecutionBase /* or public ChildExecutionLike */ {
   inline void result() {}
 
   /**
-   * A sink execution must declare `execution_type` and `execute`.
+   * A sink execution must declare `execute`.
    * A non-sink execution may inherit them from child Execution class, or declare new and independent ones.
    *
    * Exec is the final class that contains the logics of the Execution classes of all the operators in the pipeline
    * args are the arguments to initialize all the Execution classes, ordered from the source execution to the sink execution
    **/
-  constexpr static ExecutionType execution_type = Run;
-
   template<typename Exec, typename ... ArgT>
   static decltype(auto) execute(ArgT&& ... args) {}
 };
@@ -117,7 +117,10 @@ auto is_pipe_operator(int) -> decltype(
   // has declared type OutputType
   std::declval<traits::remove_cvr_t<typename RT::OutputType>>(),
   // has a member function `wrap` that accepts an Execution class
-  std::declval<RT&>().template wrap<ExecutionLike<typename RT::OutputType>>(),
+  std::declval<RT&>().template wrap<
+    ExecutionType::Execute, ExecutionLike<typename RT::OutputType>>(),
+  std::declval<RT&>().template wrap<
+    ExecutionType::Object, ExecutionLike<typename RT::OutputType>>(),
   std::true_type{}
 );
 
@@ -174,7 +177,7 @@ template<typename E>
 using is_execution = std::is_base_of<ExecutionBase, E>;
 
 template<typename T>
-using operator_control_t = typename traits::remove_cvr_t<decltype(std::declval<T&>().control)>;
+using operator_control_t = typename traits::remove_cvr_t<decltype(std::declval<T&>().control())>;
 
 template<typename T>
 using execution_has_result = decltype(details::execution_has_result<T>(0));

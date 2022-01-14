@@ -1,6 +1,7 @@
 #pragma once
 
 #include "base.hpp"
+#include "traits.hpp"
 
 namespace coll {
 struct FilterArgsTag {};
@@ -40,9 +41,9 @@ struct Filter {
     }
   };
 
-  template<typename Child, typename ... X>
+  template<ExecutionType ET, typename Child, typename ... X>
   inline decltype(auto) wrap(X&& ... x) {
-    return parent.template wrap<Execution<Child>, Args&, X...>(
+    return parent.template wrap<ET, Execution<Child>, Args&, X...>(
       args, std::forward<X>(x)...
     );
   }
@@ -56,5 +57,16 @@ template<typename Parent, typename Args,
 inline Filter<P, A>
 operator | (Parent&& parent, Args&& args) {
   return {std::forward<Parent>(parent), std::forward<Args>(args)};
+}
+
+template<typename Optional, typename Args,
+  typename O = traits::remove_cvr_t<Optional>,
+  typename A = traits::remove_cvr_t<Args>,
+  std::enable_if_t<std::is_same<typename A::TagType, FilterArgsTag>::value>* = nullptr,
+  std::enable_if_t<traits::is_optional<O>::value>* = nullptr>
+inline auto operator | (Optional&& optional, Args&& args) {
+  return (bool(optional) && args.filter(*optional))
+    ? optional
+    : std::nullopt;
 }
 } // namespace coll

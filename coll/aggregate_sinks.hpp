@@ -11,9 +11,9 @@ inline auto count() {
   return aggregate(size_t(0), [](auto& cnt, auto&&) { ++cnt; });
 }
 
+// max, min
 struct MinMaxArgsTag {};
 
-// max, min
 template<typename Comparator, bool Ref>
 struct MinMaxArgs {
   using TagType = MinMaxArgsTag;
@@ -64,67 +64,75 @@ inline auto operator | (Parent&& parent, Args&& args) {
   return parent | aggregate(ResultType(), find_minmax);
 }
 
-struct SumArgsTag {};
+// reduce
+struct ReduceArgsTag {};
 
-// sum
-template<typename Add, typename InitVal = NullArg>
-struct SumArgs {
-  using TagType = SumArgsTag;
+template<typename R, typename InitVal = NullArg>
+struct ReduceArgs {
+  using TagType = ReduceArgsTag;
 
-  Add add;
+  R reducer;
   InitVal init_val;
 
   template<typename AnotherInitVal>
-  inline SumArgs<Add, AnotherInitVal> init(AnotherInitVal i) {
-    return {std::forward<Add>(add), std::forward<AnotherInitVal>(i)};
+  inline ReduceArgs<R, AnotherInitVal> init(AnotherInitVal i) {
+    return {std::forward<R>(reducer), std::forward<AnotherInitVal>(i)};
   }
 
   constexpr static bool has_init_val =
     !std::is_same<InitVal, NullArg>::value;
 };
 
-template<typename Add>
-inline SumArgs<Add> sum(Add add) {
-  return {std::forward<Add>(add)};
-}
-
-inline auto sum() {
-  return sum([](auto& a, auto&& b) { a += b; });
+template<typename R>
+inline ReduceArgs<R> reduce(R&& reducer) {
+  return {std::forward<R>(reducer)};
 }
 
 /**
  * empty coll_operator + no init val => nullopt
- * non empty coll_operator + no init val => some(add tail elems to the head elem)
+ * non empty coll_operator + no init val => some(reduce tail elems on the head elem)
  * empty coll_operator + init val => some(init val)
- * non empty coll_operator + init val => some(add elems to the init val)
+ * non empty coll_operator + init val => some(reduce elems on the init val)
  **/
 template<typename Parent, typename Args,
   typename P = traits::remove_cvr_t<Parent>,
   typename A = traits::remove_cvr_t<Args>,
-  std::enable_if_t<std::is_same<typename A::TagType, SumArgsTag>::value>* = nullptr,
+  std::enable_if_t<std::is_same<typename A::TagType, ReduceArgsTag>::value>* = nullptr,
   std::enable_if_t<traits::is_pipe_operator<P>::value>* = nullptr>
 inline auto operator | (Parent&& parent, Args&& args) {
   if constexpr (Args::has_init_val) {
     return std::make_optional(
-      parent | aggregate(std::move(args.init_val), args.add)
+      parent | aggregate(std::move(args.init_val), args.reducer)
     );
   } else {
     using InputType = typename P::OutputType;
     using ElemType = typename traits::remove_cvr_t<InputType>;
-    auto add = [&](auto& opt, auto&& e) {
+    auto reducer = [&](auto& opt, auto&& e) {
       if (likely(bool(opt))) {
-        args.add(*opt, std::forward<decltype(e)>(e));
+        args.reducer(*opt, std::forward<decltype(e)>(e));
       } else {
         opt = e;
       }
     };
-    return parent | aggregate(std::optional<ElemType>(), add);
+    return parent | aggregate(std::optional<ElemType>(), reducer);
   }
 }
 
-struct AvgArgsTag {};
+inline auto sum() {
+  return reduce([](auto& a, auto&& b) {
+    a += b;
+  });
+}
+
+inline auto mul() {
+  return reduce([](auto& a, auto&& b) {
+    a *= b;
+  });
+}
 
 // avg
+struct AvgArgsTag {};
+
 template<typename Add, typename InitVal = NullArg>
 struct AvgArgs {
   using TagType = AvgArgsTag;

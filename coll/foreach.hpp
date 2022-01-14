@@ -27,7 +27,11 @@ struct ForeachExecution : public ExecutionBase {
   }
 
   Args args;
-  auto_val(control, default_control());
+  auto_val(ctrl, default_control());
+
+  inline auto& control() {
+    return ctrl;
+  }
 
   inline void start() {}
 
@@ -36,8 +40,6 @@ struct ForeachExecution : public ExecutionBase {
   }
 
   inline void end() {}
-
-  constexpr static ExecutionType execution_type = Run;
 
   template<typename Exec, typename ... ArgT>
   static void execute(ArgT&& ... args) {
@@ -55,6 +57,21 @@ template<typename Parent, typename Args,
   std::enable_if_t<traits::is_pipe_operator<P>::value>* = nullptr>
 inline decltype(auto) operator | (Parent&& parent, Args&& args) {
   using Input = typename P::OutputType;
-  return parent.template wrap<ForeachExecution<Args, Input>, Args&>(args);
+  return parent.template wrap<
+    ExecutionType::Execute,
+    ForeachExecution<Args, Input>,
+    Args&
+  >(args);
+}
+
+template<typename Optional, typename Args,
+  typename O = traits::remove_cvr_t<Optional>,
+  typename A = traits::remove_cvr_t<Args>,
+  std::enable_if_t<std::is_same<typename A::TagType, ForeachArgsTag>::value>* = nullptr,
+  std::enable_if_t<traits::is_optional<O>::value>* = nullptr>
+inline void operator | (Optional&& optional, Args&& args) {
+  if (bool(optional)) {
+    args.action(*optional);
+  }
 }
 } // namespace coll

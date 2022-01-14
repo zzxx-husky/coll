@@ -51,9 +51,13 @@ struct Aggregate {
     Args args;
     // dont use auto_val here because AggregatorType might be a reference
     AggregatorType aggregator = args.template get_aggregator<InputType>();
-    auto_val(control, default_control());
+    auto_val(ctrl, default_control());
 
     Execution(const Args& args): args(args) {}
+
+    inline auto& control() {
+      return ctrl;
+    }
 
     inline void start() {}
 
@@ -67,8 +71,6 @@ struct Aggregate {
       return decltype(aggregator)(std::move(aggregator));
     }
 
-    constexpr static ExecutionType execution_type = Run;
-
     template<typename Exec, typename ... ArgT>
     static auto execute(ArgT&& ... args) {
       auto exec = Exec(std::forward<ArgT>(args)...);
@@ -80,7 +82,7 @@ struct Aggregate {
   };
 
   inline decltype(auto) execute() {
-    return parent.template wrap<Execution, Args&>(args);
+    return parent.template wrap<ExecutionType::Execute, Execution, Args&>(args);
   }
 };
 

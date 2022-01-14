@@ -28,7 +28,11 @@ struct Last {
 
   struct Execution : public ExecutionBase {
     ResultType res;
-    auto_val(control, default_control());
+    auto_val(ctrl, default_control());
+
+    inline auto& control() {
+      return ctrl;
+    }
 
     inline void process(InputType e) {
       res = std::forward<InputType>(e);
@@ -39,8 +43,6 @@ struct Last {
     inline void end() {}
 
     inline auto& result() { return res; }
-
-    constexpr static ExecutionType execution_type = Run;
 
     template<typename Exec, typename ... ArgT>
     static auto execute(ArgT&& ... args) {
@@ -53,7 +55,7 @@ struct Last {
   };
 
   inline decltype(auto) last() {
-    return parent.template wrap<Execution>();
+    return parent.template wrap<ExecutionType::Execute, Execution>();
   }
 };
 

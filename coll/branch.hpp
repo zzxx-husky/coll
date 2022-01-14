@@ -52,18 +52,22 @@ struct Branch {
     }
 
     Args args;
-    auto_val(control, default_control());
+    auto_val(ctrl, default_control());
+
+    inline auto& control() {
+      return ctrl;
+    }
 
     inline void process(InputType e) {
-      if (likely(!B<BranchChild>::control.break_now)) {
+      if (likely(!B<BranchChild>::control().break_now)) {
         B<BranchChild>::process(e);
       }
-      if (likely(!A<OutputChild>::control.break_now)) {
+      if (likely(!A<OutputChild>::control().break_now)) {
         A<OutputChild>::process(std::forward<InputType>(e));
       }
-      if (unlikely(B<BranchChild>::control.break_now &&
-                   A<OutputChild>::control.break_now)) {
-        control.break_now = true;
+      if (unlikely(B<BranchChild>::control().break_now &&
+                   A<OutputChild>::control().break_now)) {
+        ctrl.break_now = true;
       }
     }
 
@@ -83,11 +87,10 @@ struct Branch {
       }
     }
 
-    using A<OutputChild>::execution_type;
     using A<OutputChild>::execute;
   };
 
-  template<typename OutputChild, typename ... X>
+  template<ExecutionType ETA, typename OutputChild, typename ... X>
   struct Helper {
     using OutputType = InputType;
 
@@ -95,17 +98,24 @@ struct Branch {
     Args& args;
     std::tuple<X...> x;
 
-    template<typename BranchChild, typename ... Y>
+    template<ExecutionType ETB, typename BranchChild, typename ... Y>
     inline decltype(auto) wrap(Y&& ... y) {
-      return parent.template wrap<Execution<OutputChild, BranchChild>, Args&, std::tuple<X...>&>(
+      constexpr ExecutionType ET = [&]() {
+        if constexpr (ETA < ETB) {
+          return ETA;
+        } else {
+          return ETB;
+        }
+      }();
+      return parent.template wrap<ET, Execution<OutputChild, BranchChild>, Args&, std::tuple<X...>&>(
         args, x, std::forward_as_tuple(std::forward<Y>(y)...)
       );
     }
   };
 
-  template<typename OutputChild, typename ... X>
+  template<ExecutionType ET, typename OutputChild, typename ... X>
   inline decltype(auto) wrap(X&& ... x) {
-    return args.pipeline_builder(Helper<OutputChild, X...>{
+    return args.pipeline_builder(Helper<ET, OutputChild, X...>{
       parent, args,
       std::forward_as_tuple(std::forward<X>(x)...)
     });

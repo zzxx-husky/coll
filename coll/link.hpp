@@ -19,7 +19,10 @@ struct Link {
     }
 
     ChildExec child_exec;
-    auto_ref(control, child_exec.control);
+
+    inline auto& control() {
+      return child_exec.control();
+    }
 
     inline void start() { child_exec.start(); }
 
@@ -31,8 +34,6 @@ struct Link {
 
     inline decltype(auto) result() { return child_exec.result(); }
 
-    constexpr static ExecutionType execution_type = Run;
-
     template<typename Exec, typename ... ArgT>
     static decltype(auto) execute(ArgT&& ... args) {
       auto exec = Exec(std::forward<ArgT>(args)...);
@@ -43,11 +44,15 @@ struct Link {
     }
   };
 
-  template<typename Child, typename ... X>
+  template<ExecutionType ET, typename Child, typename ... X>
   inline decltype(auto) wrap(X&& ... x) {
-    auto child_exec = child_coll.template wrap<Child, X...>(std::forward<X>(x) ...);
+    // child_coll::wrap should return an object
+    auto child_exec = child_coll.template wrap<ET, Child, X...>(std::forward<X>(x) ...);
     using T = decltype(child_exec);
-    return parent_coll.template wrap<Execution<T>>(std::forward<T>(child_exec));
+    return parent_coll.template wrap<
+      ExecutionType::Execute,
+      Execution<T>
+    >(std::forward<T>(child_exec));
   }
 };
 

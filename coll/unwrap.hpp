@@ -26,6 +26,16 @@ struct UnwrapArgs {};
 
 inline UnwrapArgs unwrap() { return {}; }
 
+template<typename T>
+struct UnwrapOrArgs {
+  T default_value;
+};
+
+template<typename T>
+inline UnwrapOrArgs<T> unwrap_or(T&& default_value) {
+  return {std::forward<T>(default_value)};
+}
+
 // Note(zzxx): Unwrappable means unwrap-pable, instead of un-wrappable.
 // E.g., std::optional, iterator, pointer, etc.
 template<typename Unwrappable,
@@ -40,12 +50,30 @@ inline decltype(auto) operator | (Unwrappable&& wrapped, UnwrapArgs) {
   return *wrapped;
 }
 
+template<typename Unwrappable, typename T,
+  std::enable_if_t<traits::is_unwrappable<Unwrappable>::value>* = nullptr>
+inline auto operator | (Unwrappable&& wrapped, const UnwrapOrArgs<T>& arg) {
+  if (!bool(wrapped)) {
+    return arg.default_value;
+  }
+  return *wrapped;
+}
+
 template<typename Parent,
   typename P = traits::remove_cvr_t<Parent>,
   std::enable_if_t<traits::is_pipe_operator<P>::value>* = nullptr>
 inline auto operator | (Parent&& parent, UnwrapArgs) {
   return parent | map([](auto&& wrapped) -> decltype(auto) {
     return wrapped | UnwrapArgs{};
+  });
+}
+
+template<typename Parent, typename T,
+  typename P = traits::remove_cvr_t<Parent>,
+  std::enable_if_t<traits::is_pipe_operator<P>::value>* = nullptr>
+inline auto operator | (Parent&& parent, const UnwrapOrArgs<T>& arg) {
+  return parent | map([arg](auto&& wrapped) -> decltype(auto) {
+    return wrapped | arg;
   });
 }
 } // namespace coll

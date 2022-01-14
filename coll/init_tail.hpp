@@ -75,15 +75,15 @@ struct InitTail {
     }
   };
 
-  template<typename Child, typename ... X>
+  template<ExecutionType ET, typename Child, typename ... X>
   inline decltype(auto) wrap(X&& ... x) {
     using Ctrl = traits::operator_control_t<Child>;
     if constexpr (Args::is_init != Ctrl::is_reversed) {
-      return parent.template wrap<InitExecution<Child>, Args&, X...>(
+      return parent.template wrap<ET, InitExecution<Child>, Args&, X...>(
         args, std::forward<X>(x) ...
       );
     } else {
-      return parent.template wrap<TailExecution<Child>, Args&, X...>(
+      return parent.template wrap<ET, TailExecution<Child>, Args&, X...>(
         args, std::forward<X>(x) ...
       );
     }

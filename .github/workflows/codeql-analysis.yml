@@ -62,7 +62,7 @@ jobs:
     - name: Build
       run: |
         source ${{github.workspace}}/../inst_scripts/instrc.sh
-        cmake -S . -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+        cmake -S . -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=Release
         cmake --build ${{github.workspace}}/build -j4
       shell: bash -ieo pipefail {0}
 

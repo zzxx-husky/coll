@@ -30,20 +30,22 @@ struct Head {
 
   struct Execution : public ExecutionBase {
     ResultType res;
-    auto_val(control, default_control());
+    auto_val(ctrl, default_control());
 
     inline void start() {}
 
+    inline auto& control() {
+      return ctrl;
+    }
+
     inline void process(InputType e) {
       res = std::forward<InputType>(e);
-      control.break_now = true;
+      ctrl.break_now = true;
     }
 
     inline void end() {}
 
     inline auto& result() { return res; }
-
-    constexpr static ExecutionType execution_type = Run;
 
     template<typename Exec, typename ... ArgT>
     static auto execute(ArgT&& ... args) {
@@ -56,7 +58,7 @@ struct Head {
   };
 
   inline decltype(auto) head() {
-    return parent.template wrap<Execution>();
+    return parent.template wrap<ExecutionType::Execute, Execution>();
   }
 };
 

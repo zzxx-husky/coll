@@ -56,6 +56,29 @@ struct Scapegoat {
     return o + s.val;
   }
 
+  Scapegoat& operator*= (int a) {
+    val *= a;
+    return *this;
+  }
+
+  Scapegoat& operator*= (const Scapegoat& other) {
+    val *= other.val;
+    return *this;
+  }
+
+  Scapegoat operator* (int a) {
+    return Scapegoat{val * a};
+  }
+
+  Scapegoat operator* (const Scapegoat& other) {
+    return Scapegoat{val * other.val};
+  }
+
+  template<typename Other>
+  friend Other operator* (Other& o, const Scapegoat& s) {
+    return o * s.val;
+  }
+
   auto& operator=(const Scapegoat& o) {
     val = o.val;
     ++ScapegoatCounter::num_scapegoat_copy;

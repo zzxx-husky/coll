@@ -83,6 +83,22 @@ TEST_F(Sink, SumGoat) {
   );
 }
 
+TEST_F(Sink, Mul) {
+  EXPECT_EQ(
+    std::accumulate(Sink::ints.begin(), Sink::ints.end(), 0,
+      [](auto a, auto b) { return a * b; }),
+    *(coll::iterate(Sink::ints) | coll::mul())
+  );
+}
+
+TEST_F(Sink, MulGoat) {
+  EXPECT_EQ(
+    std::accumulate(Sink::goats.begin(), Sink::goats.end(), Scapegoat{0},
+      [](auto a, auto b) { return a * b; }),
+    *(coll::iterate(Sink::goats) | coll::mul())
+  );
+}
+
 TEST_F(Sink, Avg) {
   EXPECT_EQ(std::accumulate(Sink::ints.begin(), Sink::ints.end(), 0) / Sink::ints.size(),
     *(coll::iterate(Sink::ints) | coll::avg())

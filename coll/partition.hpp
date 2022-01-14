@@ -74,16 +74,16 @@ struct Partition {
         const auto& const_key = key;
         iter = partition_map.emplace(key, construct_partition_pipeline(args, const_key, child)).first;
         // end when created
-        if (unlikely(iter->second.control.break_now)) {
+        if (unlikely(iter->second.control().break_now)) {
           end_partition(key, iter->second);
           return;
         }
       }
       auto& pipe = iter->second;
       // if the partition has ended but there are still new elements coming into this partition
-      if (likely(!pipe.control.break_now)) {
+      if (likely(!pipe.control().break_now)) {
         pipe.process(std::forward<InputType>(e));
-        if (unlikely(pipe.control.break_now)) {
+        if (unlikely(pipe.control().break_now)) {
           end_partition(key, pipe);
         }
       }
@@ -94,7 +94,7 @@ struct Partition {
     // so do not know when *all* the partitions end.
     inline void end() {
       for (auto& i : partition_map) {
-        if (!i.second.control.break_now) {
+        if (!i.second.control().break_now) {
           end_partition(i.first, i.second);
         }
       }
@@ -113,12 +113,12 @@ struct Partition {
     }
   };
 
-  template<typename Child, typename ... X>
+  template<ExecutionType ET, typename Child, typename ... X>
   inline decltype(auto) wrap(X&& ... x) {
     using Ctrl = traits::operator_control_t<Child>;
     static_assert(!Ctrl::is_reversed,
       "Partition operator does not support reversion. Use `with_buffer()` for the nearest `reverse`");
-    return parent.template wrap<Execution<Child>, Args&, X...>(
+    return parent.template wrap<ET, Execution<Child>, Args&, X...>(
       args, std::forward<X>(x)...
     );
   }

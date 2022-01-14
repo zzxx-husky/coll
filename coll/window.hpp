@@ -65,7 +65,7 @@ struct Window {
     }
   };
 
-  template<typename Child, typename ... X>
+  template<ExecutionType ET, typename Child, typename ... X>
   inline decltype(auto) wrap(X&& ... x) {
     //
     // We do not know what the start of the last window will be if
@@ -81,7 +81,7 @@ struct Window {
     static_assert(!Ctrl::is_reversed, "Window does not support reverse iteration. "
       "Consider to use `with_buffer()` for the closest downstream `reverse()` operator.");
 
-    return parent.template wrap<Execution<Child>, Args&, X...>(
+    return parent.template wrap<ET, Execution<Child>>(
       args, std::forward<X>(x)...
     );
   }

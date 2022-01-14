@@ -55,9 +55,9 @@ struct Unique {
     }
   };
 
-  template<typename Child, typename ... X>
+  template<ExecutionType ET, typename Child, typename ... X>
   inline decltype(auto) wrap(X&& ... x) {
-    return parent.template wrap<Execution<Child>, Args&, X...>(args, std::forward<X>(x)...);
+    return parent.template wrap<ET, Execution<Child>>(args, std::forward<X>(x)...);
   }
 };
 

@@ -43,14 +43,14 @@ struct TakeWhile {
       if (args.filter(e)) {
         Child::process(std::forward<InputType>(e));
       } else {
-        this->control.break_now = true;
+        this->control().break_now = true;
       }
     }
   };
 
-  template<typename Child, typename ... X>
+  template<ExecutionType ET, typename Child, typename ... X>
   inline decltype(auto) wrap(X&& ... x) {
-    return parent.template wrap<Execution<Child>, Args&, X...>(
+    return parent.template wrap<ET, Execution<Child>, Args&, X...>(
       args, std::forward<X>(x)...
     );
   }

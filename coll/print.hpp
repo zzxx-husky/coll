@@ -68,7 +68,11 @@ struct Print {
 
     Args args;
     auto_val(printed, false);
-    auto_val(control, default_control());
+    auto_val(ctrl, default_control());
+
+    inline auto& control() {
+      return ctrl;
+    }
 
     inline void start() {}
 
@@ -93,8 +97,6 @@ struct Print {
       args.out << args.end;
     }
 
-    constexpr static ExecutionType execution_type = Run;
-
     template<typename Exec, typename ... ArgT>
     static void execute(ArgT&& ... args) {
       auto exec = Exec(std::forward<ArgT>(args)...);
@@ -105,7 +107,7 @@ struct Print {
   };
 
   inline decltype(auto) execute() {
-    return parent.template wrap<Execution, Args&>(args);
+    return parent.template wrap<ExecutionType::Execute, Execution, Args&>(args);
   }
 };
 

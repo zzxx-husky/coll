@@ -80,12 +80,17 @@ struct Reverse {
   struct WithBuffer : public Child {
     Args args;
     auto_val(buffer,  args.template get_buffer<InputType>());
-    auto_val(control, Child::control.forward());
+    decltype(std::declval<Child&>().control().forward()) ctrl;
 
     template<typename ... X>
     WithBuffer(const Args& args, X&& ... x):
       args(args),
       Child(std::forward<X>(x)...) {
+      ctrl = Child::control().forward();
+    }
+
+    inline auto& control() {
+      return ctrl;
     }
 
     inline void process(InputType e) {
@@ -94,7 +99,7 @@ struct Reverse {
 
     inline void end() {
       for (auto i = std::rbegin(buffer), e = std::rend(buffer);
-           i != e && !Child::control.break_now; ++i) {
+           i != e && !Child::control().break_now; ++i) {
         if constexpr (Args::is_cache_by_ref) {
           Child::process(**i);
         } else {
@@ -107,18 +112,27 @@ struct Reverse {
 
   template<typename Child>
   struct WithoutBuffer : public Child {
-    using Child::Child;
-    auto_val(control, Child::control.reverse());
+    template<typename ... X>
+    WithoutBuffer(X&& ... x):
+      Child(std::forward<X>(x) ...) {
+      ctrl = Child::control().reverse();
+    }
+
+    decltype(std::declval<Child&>().control().reverse()) ctrl;
+
+    inline auto& control() {
+      return ctrl;
+    }
 
     inline void process(InputType e) {
       Child::process(std::forward<InputType>(e));
-      if (unlikely(Child::control.break_now)) {
-        this->control.break_now = true;
+      if (unlikely(Child::control().break_now)) {
+        this->ctrl.break_now = true;
       }
     }
   };
 
-  template<typename Child, typename ... X>
+  template<ExecutionType ET, typename Child, typename ... X>
   inline decltype(auto) wrap(X&& ... x) {
     using Ctrl = traits::operator_control_t<Child>;
     using ProcessType =
@@ -127,11 +141,11 @@ struct Reverse {
                                                      WithBuffer<Child>
     >>;
     if constexpr (!Args::reverse_with_buffer || Ctrl::is_reversed) {
-      return parent.template wrap<ProcessType, X...>(
+      return parent.template wrap<ET, ProcessType, X...>(
         std::forward<X>(x)...
       );
     } else {
-      return parent.template wrap<ProcessType, Args&, X...>(
+      return parent.template wrap<ET, ProcessType, Args&, X...>(
         args, std::forward<X>(x)...
       );
     }

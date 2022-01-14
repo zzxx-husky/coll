@@ -74,7 +74,11 @@ struct To {
 
     Args args;
     auto_val(container, args.template get_container<InputType>());
-    auto_val(control,   default_control());
+    auto_val(ctrl, default_control());
+
+    inline auto& control() {
+      return ctrl;
+    }
 
     inline void start() {}
 
@@ -98,8 +102,6 @@ struct To {
       }
     }
 
-    constexpr static ExecutionType execution_type = Run;
-
     template<typename Exec, typename ... ArgT>
     static decltype(auto) execute(ArgT&& ... args) {
       auto exec = Exec(std::forward<ArgT>(args)...);
@@ -111,7 +113,7 @@ struct To {
   };
 
   inline decltype(auto) execute() {
-    return parent.template wrap<Execution, Args&>(args);
+    return parent.template wrap<ExecutionType::Execute, Execution, Args&>(args);
   }
 };
 

@@ -63,3 +63,21 @@ GTEST_TEST(Unwrap, Coll) {
     EXPECT_EQ(sum, (0 + 9) * 10 / 2);
   }
 }
+
+GTEST_TEST(UnwrapOr, Basic) {
+  {
+    auto val = coll::range(0, 0)
+      | coll::min()
+      | coll::unwrap_or(10);
+
+    EXPECT_EQ(val, 10);
+  }
+  {
+    auto val = coll::range(0, 10)
+      | coll::filter(anony_cc(_ % 2 == 1))
+      | coll::head()
+      | coll::unwrap_or(10);
+
+    EXPECT_EQ(val, 1);
+  }
+}

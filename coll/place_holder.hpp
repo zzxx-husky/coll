@@ -7,11 +7,12 @@ template<typename Input>
 struct PlaceHolder {
   using OutputType = Input;
 
-  template<typename Child, typename ... X>
+  template<ExecutionType ET, typename Child, typename ... X>
   inline decltype(auto) wrap(X&& ... x) {
-    if constexpr (Child::execution_type == Construct) {
-      return Child::template execution<Child>(std::forward<X>(x)...);
-    } else {
+    if constexpr (ET == Construct) {
+      // call `execute` because the child knows how to construct
+      return Child::template construct<ExecutionType::Object, Child>(std::forward<X>(x)...);
+    } else /* if constexpr (ET == Execute || ET == Object) */ {
       return Child(std::forward<X>(x)...);
     }
   }
@@ -29,9 +30,12 @@ struct PostPlaceHolder {
 
   struct Execution : public ExecutionBase {
     ChildExecution child_exec;
-    auto_ref(control, child_exec.control);
 
     Execution(const ChildExecution& e): child_exec(e) {}
+
+    inline auto& control() {
+      return child_exec.control();
+    }
 
     inline void start() {
       child_exec.start();
@@ -51,8 +55,6 @@ struct PostPlaceHolder {
       }
     }
 
-    constexpr static ExecutionType execution_type = Run;
-
     template<typename SrcExec, typename ... ArgT>
     static decltype(auto) execute(ArgT&& ... args) {
       SrcExec src_exec{std::forward<ArgT>(args)...};
@@ -63,7 +65,7 @@ struct PostPlaceHolder {
   };
 
   inline decltype(auto) execute() {
-    return parent.template wrap<Execution, ChildExecution&>(child_exec);
+    return parent.template wrap<ExecutionType::Execute, Execution, ChildExecution&>(child_exec);
   }
 };
 

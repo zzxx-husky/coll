@@ -13,7 +13,6 @@ template<typename Parent, typename Args>
 struct Sort {
   using InputType = typename Parent::OutputType;
   using OutputType = InputType;
-  // using BufferType = decltype(std::declval<Args&>().template get_buffer<InputType>());
 
   Parent parent;
   Args args;
@@ -27,11 +26,16 @@ struct Sort {
     Execution(const Args& args, X&& ... x):
       args(args),
       Child(std::forward<X>(x)...) {
+      ctrl = Child::control().forward();
     }
 
     // 2. States, if any
-    auto_val(elems,   args.template get_buffer<InputType>());
-    auto_val(control, Child::control.forward());
+    auto_val(elems, args.template get_buffer<InputType>());
+    decltype(std::declval<Child&>().control().forward()) ctrl;
+
+    inline auto& control() {
+      return ctrl;
+    }
 
     // 3. Process each input from parent
     inline void process(InputType e) {
@@ -54,7 +58,7 @@ struct Sort {
     inline void end() {
       sort();
       for (auto i = elems.begin(), e = elems.end();
-           i != e && !Child::control.break_now; ++i) {
+           i != e && !Child::control().break_now; ++i) {
         if constexpr (Args::is_cache_by_ref) {
           Child::process(**i);
         } else {
@@ -65,9 +69,9 @@ struct Sort {
     }
   };
 
-  template<typename Child, typename ... X>
+  template<ExecutionType ET, typename Child, typename ... X>
   inline decltype(auto) wrap(X&& ... x) {
-    return parent.template wrap<Execution<Child>, Args&, X...>(args, std::forward<X>(x)...);
+    return parent.template wrap<ET, Execution<Child>>(args, std::forward<X>(x)...);
   }
 };
 
