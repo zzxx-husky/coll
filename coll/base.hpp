@@ -160,6 +160,26 @@ auto execution_has_end(int) -> decltype(
 template<typename T>
 std::false_type execution_has_end(...);
 
+template<typename T>
+auto execution_has_launch(int) -> decltype(
+  // has member function `result`
+  std::declval<T&>().launch(),
+  std::true_type{}
+);
+
+template<typename T>
+std::false_type execution_has_launch(...);
+
+template<typename T, typename ... ArgT>
+auto execution_has_feed(int) -> decltype(
+  // has member function `result`
+  std::declval<T&>().feed(std::declval<ArgT>() ...),
+  std::true_type{}
+);
+
+template<typename T, typename ... ArgT>
+std::false_type execution_has_feed(...);
+
 template<typename T, typename Cond>
 auto satisfy(Cond cond) -> decltype(
   cond(std::declval<T&>()),
@@ -187,6 +207,12 @@ using execution_has_start = decltype(details::execution_has_start<T>(0));
 
 template<typename T>
 using execution_has_end = decltype(details::execution_has_end<T>(0));
+
+template<typename T>
+using execution_has_launch = decltype(details::execution_has_launch<T>(0));
+
+template<typename T, typename ... ArgT>
+using execution_has_feed = decltype(details::execution_has_feed<T, ArgT ...>(0));
 
 template<typename T, bool enable = true>
 struct operator_output {

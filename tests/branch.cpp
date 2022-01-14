@@ -74,3 +74,17 @@ GTEST_TEST(Branch, TwoByTwoBranches) {
       | coll::count()
   );
 }
+
+GTEST_TEST(Branch, WithConcat) {
+  std::vector<int> v;
+
+  coll::elements(1)
+    | coll::branch(anonyr_cc(
+        _ | coll::concat(coll::elements(3))
+          | coll::to(v)
+      ))
+    | coll::concat(coll::elements(2))
+    | coll::to(v);
+
+  EXPECT_EQ(v, (std::vector<int>{1, 1, 2, 3}));
+}

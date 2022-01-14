@@ -69,22 +69,42 @@ struct Concat {
       Child  (std::get<XN + YN + 1 + ZI>(xyz)...) {
     }
 
+    inline auto& control() {
+      return Child::control();
+    }
+
     // This is used to run the execution.
-    inline void process() {
-      Parent1::process();
-      Parent2::process();
+    inline void launch() {
+      if constexpr (traits::execution_has_launch<Parent1>::value) {
+        Parent1::launch();
+      }
+      if constexpr (traits::execution_has_launch<Parent2>::value) {
+        Parent2::launch();
+      }
     }
 
     // Invoke the first parent only
     template<typename ... ArgT>
-    inline void process(Left, ArgT&& ... args) {
-      Parent1::process(std::forward<ArgT>(args) ...);
+    inline void feed(Left, ArgT&& ... args) {
+      Parent1::feed(std::forward<ArgT>(args) ...);
     }
 
     // Invoke the second parent only
     template<typename ... ArgT>
-    inline void process(Right, ArgT&& ... args) {
-      Parent2::process(std::forward<ArgT>(args) ...);
+    inline void feed(Right, ArgT&& ... args) {
+      Parent2::feed(std::forward<ArgT>(args) ...);
+    }
+
+    template<typename ... ArgT>
+    inline void feed(ArgT&& ... args) {
+      // there must be one and only one parent that accepts these args
+      static_assert(traits::execution_has_feed<Parent1, ArgT ...>::value !=
+        traits::execution_has_feed<Parent2, ArgT ...>::value);
+      if constexpr (traits::execution_has_feed<Parent1, ArgT ...>::value) {
+        Parent1::feed(std::forward<ArgT>(args) ...);
+      } else /* if constexpr (traits::execution_has_feed<Parent2, ArgT ...>::value) */ {
+        Parent2::feed(std::forward<ArgT>(args) ...);
+      }
     }
 
     inline void start() {
@@ -118,15 +138,13 @@ struct Concat {
     ExecutionType ETChild, typename Child, size_t YN, size_t ZN>
   struct RemoveEnd1 {
     RemoveEnd1(Child& child):
-      child(child),
-      ctrl(child.ctrl) {
+      child(child) {
     }
 
     Child& child;
-    typename traits::operator_control_t<Child>& ctrl;
 
     inline auto& control() {
-      return ctrl;
+      return child.control();
     }
 
     inline void start() {}
@@ -142,13 +160,9 @@ struct Concat {
     static decltype(auto) construct(XYZ&& ... xyz) {
       static_assert(ET1 != Construct && ET2 != Construct);
       if constexpr (ETChild == Construct) {
-        constexpr ExecutionType ET = [&]() {
-          if constexpr (ET1 == Execute && ET2 == Execute) {
-            return ExecutionType::Execute;
-          } else /* if constexpr (ET1 == Object || ET2 == Object) */ {
-            return ExecutionType::Object;
-          }
-        }();
+        constexpr ExecutionType ET = ET1 == Execute && ET2 == Execute
+            ? ExecutionType::Execute
+            : ExecutionType::Object;
         return Child::template construct<ET, Execution<Parent1, Parent2, Child, XN, YN>>(
           std::forward<XYZ>(xyz)...
         );
@@ -169,15 +183,13 @@ struct Concat {
   template<ExecutionType ETChild, typename Child, size_t ZN>
   struct RemoveEnd2 {
     RemoveEnd2(Child& child):
-      child(child),
-      ctrl(child.ctrl) {
+      child(child) {
     }
 
     Child& child;
-    typename traits::operator_control_t<Child>& ctrl;
 
     inline auto& control() {
-      return ctrl;
+      return child.control();
     }
 
     inline void start() {}

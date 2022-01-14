@@ -99,7 +99,7 @@ struct IfElse {
     static decltype(auto) execute(ArgT&& ... args) {
       auto exec = Exec(std::forward<ArgT>(args)...);
       exec.start();
-      exec.process();
+      exec.launch();
       exec.end();
     }
   };
@@ -114,13 +114,7 @@ struct IfElse {
 
     template<ExecutionType ETElse, typename ElseChild, typename ... Y>
     inline decltype(auto) wrap(Y&& ... y) {
-      constexpr ExecutionType ET = [&]() {
-        if constexpr (ETIf < ETElse) {
-          return ETIf;
-        } else {
-          return ETElse;
-        }
-      }();
+      constexpr ExecutionType ET = ETIf < ETElse ? ETIf : ETElse;
       return parent.template wrap<
         ET, Execution<IfChild, ElseChild>, Args&, std::tuple<X...>>(
         args, std::move(x), std::forward_as_tuple(std::forward<Y>(y)...)

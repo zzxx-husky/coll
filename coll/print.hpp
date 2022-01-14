@@ -101,7 +101,7 @@ struct Print {
     static void execute(ArgT&& ... args) {
       auto exec = Exec(std::forward<ArgT>(args)...);
       exec.start();
-      exec.process();
+      exec.launch();
       exec.end();
     }
   };

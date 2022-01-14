@@ -18,7 +18,7 @@ struct TraversalParentBase {
   virtual ~TraversalParentBase() = default;
 
   virtual void start() = 0;
-  virtual void process() = 0;
+  virtual void launch() = 0;
   virtual void end() = 0;
   virtual TraversalParentBase<Output>* copy() const = 0;
   virtual void set_traversal_child(TraversalChildBase<Output>& child) = 0;
@@ -45,8 +45,8 @@ struct TraversalParent: public TraversalParentBase<Output> {
     execution.start();
   }
 
-  void process() override {
-    execution.process();
+  void launch() override {
+    execution.launch();
   }
 
   void end() override {
@@ -110,8 +110,8 @@ struct Traversal {
       parent->start();
     }
 
-    inline void process() {
-      parent->process();
+    inline void launch() {
+      parent->launch();
     }
 
     inline void end() {

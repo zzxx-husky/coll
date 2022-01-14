@@ -2,6 +2,8 @@
 
 #include "base.hpp"
 
+#include "place_holder.hpp"
+
 namespace coll {
 struct BranchArgsTag {};
 
@@ -25,33 +27,17 @@ struct Branch {
   Parent parent;
   Args args;
 
-  template<typename Child>
-  struct A : public Child { using Child::Child; };
-
-  template<typename Child>
-  struct B : public Child { using Child::Child; };
-
   template<typename OutputChild, typename BranchChild>
-  struct Execution : public A<OutputChild>, public B<BranchChild> {
-    template<typename TupleX, typename TupleY,
-      size_t XN = std::tuple_size<traits::remove_cvr_t<TupleX>>::value,
-      size_t YN = std::tuple_size<traits::remove_cvr_t<TupleY>>::value>
-    Execution(Args& args, TupleX&& x, TupleY&& y): Execution(
-      args,
-      std::forward<TupleX>(x), std::make_index_sequence<XN>{},
-      std::forward<TupleY>(y), std::make_index_sequence<YN>{}) {
-    }
-
-    template<typename TupleX, typename TupleY, size_t ... XI, size_t ... YI>
-    Execution(Args& args,
-      TupleX&& x, std::index_sequence<XI...>,
-      TupleY&& y, std::index_sequence<YI...>):
+  struct Execution : public OutputChild {
+    template<typename B, typename ... X>
+    Execution(Args& args, B&& branch_child, X&& ... x):
       args(args),
-      A<OutputChild>(std::get<XI>(x)...),
-      B<BranchChild>(std::get<YI>(y)...) {
+      branch_child(std::move(branch_child)),
+      OutputChild(std::forward<X>(x) ...) {
     }
 
     Args args;
+    BranchChild branch_child;
     auto_val(ctrl, default_control());
 
     inline auto& control() {
@@ -59,66 +45,38 @@ struct Branch {
     }
 
     inline void process(InputType e) {
-      if (likely(!B<BranchChild>::control().break_now)) {
-        B<BranchChild>::process(e);
+      if (likely(!branch_child.control().break_now)) {
+        branch_child.feed(e);
       }
-      if (likely(!A<OutputChild>::control().break_now)) {
-        A<OutputChild>::process(std::forward<InputType>(e));
+      if (likely(!OutputChild::control().break_now)) {
+        OutputChild::process(std::forward<InputType>(e));
       }
-      if (unlikely(B<BranchChild>::control().break_now &&
-                   A<OutputChild>::control().break_now)) {
+      if (unlikely(branch_child.control().break_now &&
+                   OutputChild::control().break_now)) {
         ctrl.break_now = true;
       }
     }
 
     inline void start() {
-      B<BranchChild>::start();
-      A<OutputChild>::start();
+      branch_child.start();
+      OutputChild::start();
     }
 
     inline void end() {
-      B<BranchChild>::end();
-      A<OutputChild>::end();
-    }
-
-    inline decltype(auto) result() {
-      if constexpr (traits::execution_has_result<A<OutputChild>>::value) {
-        return A<OutputChild>::result();
+      if constexpr (traits::execution_has_launch<BranchChild>::value) {
+        branch_child.launch();
       }
-    }
-
-    using A<OutputChild>::execute;
-  };
-
-  template<ExecutionType ETA, typename OutputChild, typename ... X>
-  struct Helper {
-    using OutputType = InputType;
-
-    Parent& parent;
-    Args& args;
-    std::tuple<X...> x;
-
-    template<ExecutionType ETB, typename BranchChild, typename ... Y>
-    inline decltype(auto) wrap(Y&& ... y) {
-      constexpr ExecutionType ET = [&]() {
-        if constexpr (ETA < ETB) {
-          return ETA;
-        } else {
-          return ETB;
-        }
-      }();
-      return parent.template wrap<ET, Execution<OutputChild, BranchChild>, Args&, std::tuple<X...>&>(
-        args, x, std::forward_as_tuple(std::forward<Y>(y)...)
-      );
+      branch_child.end();
+      OutputChild::end();
     }
   };
 
   template<ExecutionType ET, typename OutputChild, typename ... X>
   inline decltype(auto) wrap(X&& ... x) {
-    return args.pipeline_builder(Helper<ET, OutputChild, X...>{
-      parent, args,
-      std::forward_as_tuple(std::forward<X>(x)...)
-    });
+    auto branch_child = args.pipeline_builder(coll::place_holder<InputType>());
+    return parent.template wrap<ET, Execution<OutputChild, decltype(branch_child)>>(
+      args, std::move(branch_child), std::forward<X>(x) ...
+    );
   }
 };
 

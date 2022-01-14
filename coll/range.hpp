@@ -23,7 +23,7 @@ struct Range {
       Child(std::forward<X>(x)...) {
     }
 
-    inline void process() {
+    inline void launch() {
       using Ctrl = traits::operator_control_t<Child>;
       if constexpr (Ctrl::is_reversed) {
         for (auto i = right; left < i && !this->control().break_now;) {

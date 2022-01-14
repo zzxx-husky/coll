@@ -23,7 +23,7 @@ struct IterateByIterator {
       Child(std::forward<X>(x)...) {
     }
 
-    inline void process() {
+    inline void launch() {
       using Ctrl = traits::operator_control_t<Child>;
       if constexpr (Ctrl::is_reversed) {
         for (auto i = right; i != left && !this->control().break_now;) {
@@ -70,7 +70,7 @@ struct IterateByIterable {
       Child(std::forward<X>(x)...) {
     }
 
-    inline void process() {
+    inline void launch() {
       using Ctrl = traits::operator_control_t<Child>;
       if constexpr (Ctrl::is_reversed) {
         for (auto i = std::rbegin(iterable), e = std::rend(iterable);
@@ -118,7 +118,7 @@ struct IterateOptional {
       Child(std::forward<X>(x)...) {
     }
 
-    inline void process() {
+    inline void launch() {
       if (!this->control().break_now && bool(optional)) {
         Child::process(*optional);
       }
@@ -160,7 +160,7 @@ struct Generator {
       Child(std::forward<X>(x)...) {
     }
 
-    inline void process() {
+    inline void launch() {
       using Ctrl = traits::operator_control_t<Child>;
       static_assert(!Ctrl::is_reversed, "Generator does not support reverse iteration. "
         "Consider to use `with_buffer()` for the closest downstream `reverse()` operator.");
@@ -217,8 +217,12 @@ struct PostIterateResultOfExecution {
     ParentExecution parent;
 
     template<typename ... Y>
-    inline void process(Y&& ... y) {
-      parent.process(std::forward<Y>(y)...);
+    inline void feed(Y&& ... y) {
+      parent.feed(std::forward<Y>(y)...);
+    }
+
+    inline void launch() {
+      parent.launch();
     }
 
     inline void end() {
