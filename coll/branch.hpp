@@ -73,7 +73,7 @@ struct Branch {
 
   template<ExecutionType ET, typename OutputChild, typename ... X>
   inline decltype(auto) wrap(X&& ... x) {
-    auto branch_child = args.pipeline_builder(coll::place_holder<InputType>());
+    auto branch_child = args.pipeline_builder(place_holder<InputType>());
     return parent.template wrap<ET, Execution<OutputChild, decltype(branch_child)>>(
       args, std::move(branch_child), std::forward<X>(x) ...
     );

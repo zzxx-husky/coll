@@ -2,6 +2,8 @@
 
 #include "base.hpp"
 
+#include "place_holder.hpp"
+
 namespace coll {
 struct IfElseArgsTag {};
 
@@ -34,34 +36,18 @@ struct IfElse {
   Parent parent;
   Args args;
 
-  template<typename Child>
-  struct A : public Child { using Child::Child; };
-
-  template<typename Child>
-  struct B : public Child { using Child::Child; };
-
   template<typename IfChild, typename ElseChild>
-  struct Execution : public A<IfChild>, public B<ElseChild> {
-    template<typename TupleX, typename TupleY,
-      size_t XN = std::tuple_size<traits::remove_cvr_t<TupleX>>::value,
-      size_t YN = std::tuple_size<traits::remove_cvr_t<TupleY>>::value>
-    Execution(Args& args, TupleX&& x, TupleY&& y): Execution(
-      args,
-      std::forward<TupleX>(x), std::make_index_sequence<XN>{},
-      std::forward<TupleY>(y), std::make_index_sequence<YN>{}) {
-    }
-
-    template<typename TupleX, typename TupleY,
-      size_t ... XI, size_t ... YI>
-    Execution(Args& args,
-      TupleX&& x, std::index_sequence<XI...>,
-      TupleY&& y, std::index_sequence<YI...>):
+  struct Execution {
+    template<typename I, typename E>
+    Execution(Args& args, I&& if_child, E&& else_child):
       args(args),
-      A<IfChild>(std::get<XI>(x)...),
-      B<ElseChild>(std::get<YI>(y)...) {
+      if_child(std::move(if_child)),
+      else_child(std::move(else_child)) {
     }
 
     Args args;
+    IfChild if_child;
+    ElseChild else_child;
     auto_val(ctrl, default_control());
 
     inline auto& control() {
@@ -70,29 +56,34 @@ struct IfElse {
 
     inline void process(InputType e) {
       if (args.condition(e)) {
-        if (likely(!A<IfChild>::control().break_now)) {
-          A<IfChild>::process(e);
+        if (likely(!if_child.control().break_now)) {
+          if_child.feed(e);
         }
       } else {
-        if (likely(!B<ElseChild>::control().break_now)) {
-          B<ElseChild>::process(e);
+        if (likely(!else_child.control().break_now)) {
+          else_child.feed(e);
         }
       }
-      if (unlikely(
-        A<IfChild>::control().break_now &&
-        B<ElseChild>::control().break_now)) {
+      if (unlikely(if_child.control().break_now &&
+                   else_child.control().break_now)) {
         ctrl.break_now = true;
       }
     }
 
     inline void start() {
-      A<IfChild>::start();
-      B<ElseChild>::start();
+      else_child.start();
+      if_child.start();
     }
 
     inline void end() {
-      A<IfChild>::end();
-      B<ElseChild>::end();
+      if constexpr (traits::execution_has_launch<ElseChild>::value) {
+        else_child.launch();
+      }
+      else_child.end();
+      if constexpr (traits::execution_has_launch<IfChild>::value) {
+        if_child.launch();
+      }
+      if_child.end();
     }
 
     template<typename Exec, typename ... ArgT>
@@ -104,41 +95,13 @@ struct IfElse {
     }
   };
 
-  template<ExecutionType ETIf, typename IfChild, typename ... X>
-  struct WrapElse {
-    using OutputType = InputType;
-
-    Parent& parent;
-    Args& args;
-    std::tuple<X...> x;
-
-    template<ExecutionType ETElse, typename ElseChild, typename ... Y>
-    inline decltype(auto) wrap(Y&& ... y) {
-      constexpr ExecutionType ET = ETIf < ETElse ? ETIf : ETElse;
-      return parent.template wrap<
-        ET, Execution<IfChild, ElseChild>, Args&, std::tuple<X...>>(
-        args, std::move(x), std::forward_as_tuple(std::forward<Y>(y)...)
-      );
-    }
-  };
-
-  struct WrapIf {
-    using OutputType = InputType;
-
-    Parent& parent;
-    Args& args;
-
-    template<ExecutionType ET, typename IfChild, typename ... X>
-    inline decltype(auto) wrap(X&& ... x) {
-      return args.else_builder(WrapElse<ET, IfChild, X...>{
-        parent, args,
-        std::forward_as_tuple(std::forward<X>(x)...)
-      });
-    }
-  };
-
-  inline void run() {
-    args.if_builder(WrapIf{parent, args});
+  inline decltype(auto) run() {
+    auto if_child = args.if_builder(place_holder<InputType>());
+    auto else_child = args.else_builder(place_holder<InputType>());
+    return parent.template wrap<ExecutionType::Execute,
+      Execution<decltype(if_child), decltype(else_child)>>(
+      args, std::move(if_child), std::move(else_child)
+    );
   }
 };
 
@@ -147,7 +110,7 @@ template<typename Parent, typename Args,
   typename A = traits::remove_cvr_t<Args>,
   std::enable_if_t<std::is_same<typename A::TagType, IfElseArgsTag>::value>* = nullptr,
   std::enable_if_t<traits::is_pipe_operator<P>::value>* = nullptr>
-inline void operator | (Parent&& parent, Args&& args) {
+inline decltype(auto) operator | (Parent&& parent, Args&& args) {
   return IfElse<P, A>{std::forward<Parent>(parent), std::forward<Args>(args)}.run();
 }
 } // namespace coll

@@ -46,3 +46,18 @@ GTEST_TEST(IfElse, NestedIfElse) {
   EXPECT_TRUE(coll::iterate(c) | coll::all(anony_cc(_ % 4 == 1)));
   EXPECT_TRUE(coll::iterate(d) | coll::all(anony_cc(_ % 4 == 3)));
 }
+
+GTEST_TEST(IfElse, WithConcat) {
+  std::vector<int> even, odd;
+  coll::range(100)
+    | coll::if_else(
+        anony_cc(_ % 2 == 0),
+        anonyr_cc(_ | coll::concat(coll::elements(100)) | coll::to(even)),
+        anonyr_cc(_ | coll::concat(coll::elements(101)) | coll::to(odd))
+      );
+
+  EXPECT_EQ(even.size(), 100 / 2 + 1);
+  EXPECT_EQ(odd.size(), 100 / 2 + 1);
+  EXPECT_TRUE(coll::iterate(even) | coll::all(anony_cc(_ % 2 == 0)));
+  EXPECT_TRUE(coll::iterate(odd) | coll::all(anony_cc(_ % 2 == 1)));
+}
