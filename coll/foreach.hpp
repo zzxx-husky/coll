@@ -63,15 +63,4 @@ inline decltype(auto) operator | (Parent&& parent, Args&& args) {
     Args&
   >(args);
 }
-
-template<typename Optional, typename Args,
-  typename O = traits::remove_cvr_t<Optional>,
-  typename A = traits::remove_cvr_t<Args>,
-  std::enable_if_t<std::is_same<typename A::TagType, ForeachArgsTag>::value>* = nullptr,
-  std::enable_if_t<traits::is_optional<O>::value>* = nullptr>
-inline void operator | (Optional&& optional, Args&& args) {
-  if (bool(optional)) {
-    args.action(*optional);
-  }
-}
 } // namespace coll

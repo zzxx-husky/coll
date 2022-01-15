@@ -7,10 +7,10 @@
 namespace coll {
 template<typename Input>
 struct TraversalChildBase {
-  virtual void start_child() = 0;
-  virtual void process_child(Input) = 0;
-  virtual void end_child() = 0;
-  virtual bool break_now() = 0;
+  virtual void child_start() = 0;
+  virtual void child_process(Input) = 0;
+  virtual void child_end() = 0;
+  virtual bool child_break_now() = 0;
 };
 
 template<typename Output>
@@ -119,19 +119,19 @@ struct Traversal {
     }
 
   private:
-    void start_child() override {
+    void child_start() override {
       Child::start();
     }
 
-    void process_child(Output e) override {
+    void child_process(Output e) override {
       Child::process(std::forward<Output>(e));
     }
 
-    void end_child() override {
+    void child_end() override {
       Child::end();
     }
 
-    bool break_now() override {
+    bool child_break_now() override {
       return Child::control().break_now;
     }
   };
@@ -167,8 +167,8 @@ struct TraversalExecution {
     if (!traversal_child) {
       throw std::runtime_error("TraversalChildBase is not set before use.");
     }
-    traversal_child->start_child();
-    if (traversal_child->break_now()) {
+    traversal_child->child_start();
+    if (traversal_child->child_break_now()) {
       ctrl.break_now = true;
     }
   }
@@ -178,14 +178,14 @@ struct TraversalExecution {
   }
 
   inline void process(Output e) {
-    traversal_child->process_child(std::forward<Output>(e));
-    if (unlikely(traversal_child->break_now())) {
+    traversal_child->child_process(std::forward<Output>(e));
+    if (unlikely(traversal_child->child_break_now())) {
       ctrl.break_now = true;
     }
   }
 
   inline void end() {
-    traversal_child->end_child();
+    traversal_child->child_end();
   }
 
   template<ExecutionType ET, typename Exec, typename ... ArgT>

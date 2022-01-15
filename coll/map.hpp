@@ -59,15 +59,4 @@ inline Map<P, A>
 operator | (Parent&& parent, Args&& args) {
   return {std::forward<Parent>(parent), std::forward<Args>(args)};
 }
-
-template<typename Optional, typename Args,
-  typename O = traits::remove_cvr_t<Optional>,
-  typename A = traits::remove_cvr_t<Args>,
-  std::enable_if_t<std::is_same<typename A::TagType, MapArgsTag>::value>* = nullptr,
-  std::enable_if_t<traits::is_optional<O>::value>* = nullptr>
-inline auto operator | (Optional&& optional, Args&& args) {
-  return bool(optional)
-    ? std::optional(args.mapper(*optional))
-    : std::nullopt;
-}
 } // namespace coll

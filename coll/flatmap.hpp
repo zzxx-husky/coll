@@ -1,11 +1,8 @@
 #pragma once
 
 #include "base.hpp"
-#include "traits.hpp"
 
 #include "foreach.hpp"
-#include "iterate.hpp"
-#include "traversal.hpp"
 
 namespace coll {
 struct FlatmapArgsTag {};
@@ -126,25 +123,5 @@ operator | (Parent&& parent, Args&& args) {
   static_assert(!std::is_same<typename Flatmap<P, A>::OutputType, NullArg>::value,
     "Return value of lambda of flatmap is not an iterable or a coll operator.");
   return {std::forward<Parent>(parent), std::forward<Args>(args)};
-}
-
-template<typename Optional, typename Args,
-  typename O = traits::remove_cvr_t<Optional>,
-  typename A = traits::remove_cvr_t<Args>,
-  std::enable_if_t<std::is_same<typename A::TagType, FlatmapArgsTag>::value>* = nullptr,
-  std::enable_if_t<traits::is_optional<O>::value>* = nullptr>
-inline auto operator | (Optional&& optional, Args&& args) {
-  using C = decltype(args.mapper(*optional));
-	if constexpr (traits::is_iterable<C>::value) {
-    using E = std::remove_reference_t<typename traits::iterable<C>::element_t>;
-		return bool(optional) 
-			? coll::iterate(args.mapper(*optional)) | coll::to_traversal()
-			: coll::elements<E>() | coll::to_traversal();
-	} else if constexpr (traits::is_pipe_operator<traits::remove_cvr_t<C>>::value) {
-    using E = typename traits::remove_cvr_t<C>::OutputType;
-    return bool(optional)
-      ? args.mapper(*optional) | coll::to_traversal()
-      : coll::elements<E>() | coll::to_traversal();
-	}
 }
 } // namespace coll

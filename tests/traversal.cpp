@@ -84,7 +84,6 @@ GTEST_TEST(Traversal, Break) {
 
     EXPECT_EQ(a | coll::sum() | coll::unwrap(), 0 + 1 + 2);
   }
-
   {
     auto a = coll::range(10)
       | coll::to_traversal();

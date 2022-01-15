@@ -26,6 +26,7 @@
 #include "map.hpp"
 // #include "parallel.hpp"
 // #include "parallel_partition.hpp"
+#include "optional.hpp"
 #include "partition.hpp"
 #include "reverse.hpp"
 #include "sort.hpp"
