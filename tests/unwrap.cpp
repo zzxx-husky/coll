@@ -59,7 +59,7 @@ GTEST_TEST(Unwrap, Coll) {
     auto sum = coll::generate([i = vec.begin()]() mutable { return i++; }).times(vec.size())
       | coll::unwrap()
       | coll::sum()
-      | coll::unwrap(); 
+      | coll::unwrap();
     EXPECT_EQ(sum, (0 + 9) * 10 / 2);
   }
 }

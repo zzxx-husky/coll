@@ -14,7 +14,7 @@ public:
       a = system.spawn([&](auto& self) {
       });
     }
-    return group; 
+    return group;
   }
 
 private:

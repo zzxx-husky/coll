@@ -59,7 +59,7 @@ inline auto partition(PipelineBuilder&& pipeline_builder) {
 template<typename PartitionMapClass, typename PipelineBuilder>
 inline auto partition(PipelineBuilder&& pipeline_builder) {
   return PartitionArgs<PipelineBuilder, PartitionMapClass> {
-    std::forward<PipelineBuilder>(pipeline_builder), PartitionMapClass{} 
+    std::forward<PipelineBuilder>(pipeline_builder), PartitionMapClass{}
   };
 }
 

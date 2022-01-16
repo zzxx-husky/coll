@@ -29,17 +29,17 @@ template<typename Optional, typename Args,
   std::enable_if_t<traits::is_optional<O>::value>* = nullptr>
 inline auto operator | (Optional&& optional, Args&& args) {
   using C = decltype(args.mapper(*optional));
-	if constexpr (traits::is_iterable<C>::value) {
+  if constexpr (traits::is_iterable<C>::value) {
     using E = std::remove_reference_t<typename traits::iterable<C>::element_t>;
-		return bool(optional) 
-			? coll::iterate(args.mapper(*optional)) | coll::to_traversal()
-			: coll::elements<E>() | coll::to_traversal();
-	} else if constexpr (traits::is_pipe_operator<traits::remove_cvr_t<C>>::value) {
+    return bool(optional)
+      ? coll::iterate(args.mapper(*optional)) | coll::to_traversal()
+      : coll::elements<E>() | coll::to_traversal();
+  } else if constexpr (traits::is_pipe_operator<traits::remove_cvr_t<C>>::value) {
     using E = typename traits::remove_cvr_t<C>::OutputType;
     return bool(optional)
       ? args.mapper(*optional) | coll::to_traversal()
       : coll::elements<E>() | coll::to_traversal();
-	}
+  }
 }
 
 template<typename Optional, typename Args,

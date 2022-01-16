@@ -46,7 +46,7 @@ struct Branch {
 
     inline void process(InputType e) {
       if (likely(!branch_child.control().break_now)) {
-        branch_child.feed(e);
+        branch_child.run(e);
       }
       if (likely(!OutputChild::control().break_now)) {
         OutputChild::process(std::forward<InputType>(e));
@@ -63,8 +63,8 @@ struct Branch {
     }
 
     inline void end() {
-      if constexpr (traits::execution_has_launch<BranchChild>::value) {
-        branch_child.launch();
+      if constexpr (traits::execution_has_run<BranchChild>::value) {
+        branch_child.run();
       }
       branch_child.end();
       OutputChild::end();

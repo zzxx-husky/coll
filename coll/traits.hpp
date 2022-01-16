@@ -1,6 +1,7 @@
 #pragma once
 
 #include <iterator>
+#include <string_view>
 #include <utility>
 
 #include "utils.hpp"
@@ -215,5 +216,12 @@ struct is_optional : std::false_type {};
 
 template<typename T>
 struct is_optional<std::optional<T>> : std::true_type {};
+
+template<typename T>
+struct type_name {
+  static constexpr std::string_view name() {
+    return __PRETTY_FUNCTION__;
+  }
+};
 } // namespace traits
 } // namespace coll

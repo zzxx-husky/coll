@@ -19,7 +19,7 @@ GTEST_TEST(Branch, TwoBranches) {
 
   EXPECT_EQ(branch.size(), 10);
   EXPECT_EQ(output.size(), std::unordered_set<int>(output.begin(), output.end()).size());
-  EXPECT_EQ(branch.size() - 1, 
+  EXPECT_EQ(branch.size() - 1,
     coll::range(branch.size() - 1)
       | coll::filter(anonyr_cc(branch[_] <= branch[_ + 1]))
       | coll::count()

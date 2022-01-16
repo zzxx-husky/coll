@@ -24,7 +24,7 @@ protected:
 
 
 TEST_F(InitTail, Init) {
-  auto r = coll::iterate(InitTail::ints) 
+  auto r = coll::iterate(InitTail::ints)
     | coll::init()
     | coll::filter([i = InitTail::ints.begin()](auto&& v) mutable {
         return *(i++) != v;
@@ -34,7 +34,7 @@ TEST_F(InitTail, Init) {
 }
 
 TEST_F(InitTail, InitGoat) {
-  auto r = coll::iterate(InitTail::goats) 
+  auto r = coll::iterate(InitTail::goats)
     | coll::init()
     | coll::filter([i = InitTail::goats.begin()](auto&& v) mutable {
         return *(i++) != v;
@@ -45,7 +45,7 @@ TEST_F(InitTail, InitGoat) {
 
 TEST_F(InitTail, InitGoatRef) {
   ScapegoatCounter::clear();
-  auto r = coll::iterate(InitTail::goats) 
+  auto r = coll::iterate(InitTail::goats)
     | coll::init().cache_by_ref()
     | coll::filter([i = InitTail::goats.begin()](auto&& v) mutable {
         return *(i++) != v;
@@ -57,7 +57,7 @@ TEST_F(InitTail, InitGoatRef) {
 }
 
 TEST_F(InitTail, InitReverse) {
-  auto r = coll::iterate(InitTail::ints) 
+  auto r = coll::iterate(InitTail::ints)
     | coll::init()
     | coll::reverse()
     | coll::filter([i = InitTail::ints.rbegin()](auto&& v) mutable {
@@ -68,7 +68,7 @@ TEST_F(InitTail, InitReverse) {
 }
 
 TEST_F(InitTail, InitReverseGoat) {
-  auto r = coll::iterate(InitTail::goats) 
+  auto r = coll::iterate(InitTail::goats)
     | coll::init()
     | coll::reverse()
     | coll::filter([i = InitTail::goats.rbegin()](auto&& v) mutable {
@@ -80,7 +80,7 @@ TEST_F(InitTail, InitReverseGoat) {
 
 TEST_F(InitTail, InitReverseGoatRef) {
   ScapegoatCounter::clear();
-  auto r = coll::iterate(InitTail::goats) 
+  auto r = coll::iterate(InitTail::goats)
     | coll::init().cache_by_ref()
     | coll::reverse()
     | coll::filter([i = InitTail::goats.rbegin()](auto&& v) mutable {
@@ -93,7 +93,7 @@ TEST_F(InitTail, InitReverseGoatRef) {
 }
 
 TEST_F(InitTail, Tail) {
-  auto r = coll::iterate(InitTail::ints) 
+  auto r = coll::iterate(InitTail::ints)
     | coll::tail()
     | coll::filter([i = InitTail::ints.begin()](auto&& v) mutable {
         return *(++i) != v;
@@ -103,7 +103,7 @@ TEST_F(InitTail, Tail) {
 }
 
 TEST_F(InitTail, TailGoat) {
-  auto r = coll::iterate(InitTail::goats) 
+  auto r = coll::iterate(InitTail::goats)
     | coll::tail()
     | coll::filter([i = InitTail::goats.begin()](auto&& v) mutable {
         return *(++i) != v;
@@ -114,7 +114,7 @@ TEST_F(InitTail, TailGoat) {
 
 TEST_F(InitTail, TailGoatRef) {
   ScapegoatCounter::clear();
-  auto r = coll::iterate(InitTail::goats) 
+  auto r = coll::iterate(InitTail::goats)
     | coll::tail().cache_by_ref()
     | coll::filter([i = InitTail::goats.begin()](auto&& v) mutable {
         return *(++i) != v;
@@ -126,7 +126,7 @@ TEST_F(InitTail, TailGoatRef) {
 }
 
 TEST_F(InitTail, TailReverse) {
-  auto r = coll::iterate(InitTail::ints) 
+  auto r = coll::iterate(InitTail::ints)
     | coll::tail()
     | coll::reverse()
     | coll::filter([i = InitTail::ints.rbegin()](auto&& v) mutable {
@@ -137,7 +137,7 @@ TEST_F(InitTail, TailReverse) {
 }
 
 TEST_F(InitTail, TailReverseGoat) {
-  auto r = coll::iterate(InitTail::goats) 
+  auto r = coll::iterate(InitTail::goats)
     | coll::tail()
     | coll::reverse()
     | coll::filter([i = InitTail::goats.rbegin()](auto&& v) mutable {
@@ -149,7 +149,7 @@ TEST_F(InitTail, TailReverseGoat) {
 
 TEST_F(InitTail, TailReverseGoatRef) {
   ScapegoatCounter::clear();
-  auto r = coll::iterate(InitTail::goats) 
+  auto r = coll::iterate(InitTail::goats)
     | coll::tail().cache_by_ref()
     | coll::reverse()
     | coll::filter([i = InitTail::goats.rbegin()](auto&& v) mutable {

@@ -61,7 +61,7 @@ struct Split {
           is_empty = true;
         }
       } else {
-        container_utils::insert(container, std::forward<InputType>(e));         
+        container_utils::insert(container, std::forward<InputType>(e));
         is_empty = false;
       }
     }
@@ -80,7 +80,7 @@ struct Split {
     using Ctrl = traits::operator_control_t<Child>;
     static_assert(!Ctrl::is_reversed, "Spilt does not support reverse iteration. "
       "Consider to use `with_buffer()` for the closest downstream `reverse()` operator.");
-    
+
     return parent.template wrap<ET, Execution<Child>, Args&, X...>(
       args, std::forward<X>(x)...
     );

@@ -3,7 +3,7 @@
 
 GTEST_TEST(Optional, Map) {
   std::optional<int> a{1};
-  
+
   auto b = a | coll::map(anony_cc(_ * 2));
   EXPECT_EQ(b, 2);
 
@@ -14,7 +14,7 @@ GTEST_TEST(Optional, Map) {
 
 GTEST_TEST(Optional, Filter) {
   std::optional<int> a{1};
-  
+
   auto b = a | coll::filter(anony_cc(_ % 2 == 1));
   EXPECT_EQ(b, a);
 

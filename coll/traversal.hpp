@@ -13,112 +13,130 @@ struct TraversalChildBase {
   virtual bool child_break_now() = 0;
 };
 
-template<typename Output>
-struct TraversalParentBase {
+template<typename Output, typename Ts>
+struct TraversalParentBase;
+
+template<typename Output, typename ... T>
+struct TraversalParentBase<Output, Triggers<T ...>>: virtual public T ... {
+  using TriggersType = Triggers<T ...>;
+
   virtual ~TraversalParentBase() = default;
 
+  using T::run ...;
+
   virtual void start() = 0;
-  virtual void launch() = 0;
   virtual void end() = 0;
-  virtual TraversalParentBase<Output>* copy() const = 0;
-  virtual void set_traversal_child(TraversalChildBase<Output>& child) = 0;
+  virtual TraversalParentBase<Output, Triggers<T ...>>* copy() const = 0;
+  virtual void set_traversal_child(TraversalChildBase<Output>* child) = 0;
 };
 
 template<typename Exec, typename Output>
-struct TraversalParent: public TraversalParentBase<Output> {
-  Exec execution;
+struct TraversalParent:
+  public TraversalParentBase<Output, typename Exec::TriggersType>,
+  public VirtualTriggerProxies<Exec, typename Exec::TriggersType> {
+
+  using TriggersType = typename Exec::TriggersType;
+  using VirtualTriggerProxies<Exec, typename Exec::TriggersType>::run;
+
+  Exec exec;
 
   template<typename ... X>
   TraversalParent(X&& ... x):
-    execution(std::forward<X>(x)...) {
+    exec(std::forward<X>(x)...) {
   }
 
   TraversalParent(const TraversalParent<Exec, Output>& t):
-    execution(t.execution) {
+    exec(t.exec) {
   }
 
   TraversalParent(TraversalParent<Exec, Output>&& t):
-    execution(std::move(t.execution)) {
+    exec(std::move(t.exec)) {
+  }
+
+  Exec& execution() override {
+    return exec;
   }
 
   void start() override {
-    execution.start();
-  }
-
-  void launch() override {
-    execution.launch();
+    exec.start();
   }
 
   void end() override {
-    execution.end();
+    exec.end();
   }
 
-  void set_traversal_child(TraversalChildBase<Output>& child) override {
-    execution.traversal_child = &child;
+  void set_traversal_child(TraversalChildBase<Output>* child) override {
+    exec.set_traversal_child(child);
   }
 
-  TraversalParentBase<Output>* copy() const override {
+  TraversalParentBase<Output, typename Exec::TriggersType>* copy() const override {
     return new TraversalParent<Exec, Output>(*this);
   }
 };
 
-template<typename Output>
+template<typename Output, typename Ts = Triggers<Run<>>>
 struct Traversal {
   using OutputType = Output;
 
   Traversal() = default;
 
-  Traversal(std::unique_ptr<TraversalParentBase<Output>>&& parent):
+  Traversal(std::unique_ptr<TraversalParentBase<Output, Ts>>&& parent):
     parent(std::move(parent)) {
   }
 
-  Traversal(Traversal<Output>&& t):
+  Traversal(Traversal<Output, Ts>&& t):
     parent(std::move(t.parent)) {
   }
 
-  Traversal(const Traversal<Output>& t):
+  Traversal(const Traversal<Output, Ts>& t):
     parent(t.parent->copy()) {
   }
 
-  std::unique_ptr<TraversalParentBase<Output>> parent = nullptr;
+  std::unique_ptr<TraversalParentBase<Output, Ts>> parent = nullptr;
 
   template<typename Child>
-  class TraversalChild: public Child, public TraversalChildBase<Output> {
+  class TraversalChild:
+    // to inherit the processing of child
+    public Child,
+    // to provide an interface to parent to connect with child
+    public TraversalChildBase<Output>,
+    // to provide the same triggers as the ones in parent
+    public TriggerProxies<TraversalParentBase<Output, Ts>, Ts> {
   public:
+    using TriggersType = Ts;
+
     template<typename ... X>
-    TraversalChild(std::unique_ptr<TraversalParentBase<Output>>&& parent, X&& ... x):
+    TraversalChild(std::unique_ptr<TraversalParentBase<Output, Ts>>&& parent, X&& ... x):
       parent(std::move(parent)),
       Child(std::forward<X>(x) ...) {
-      this->parent->set_traversal_child(*this);
     }
 
     TraversalChild(const TraversalChild<Child>& t):
       parent(t.parent->copy()),
       Child(t) {
-      this->parent->set_traversal_child(*this);
     }
 
     TraversalChild(TraversalChild<Child>&& t):
       parent(std::move(t.parent)),
       Child(std::move(static_cast<Child&>(t))) {
-      this->parent->set_traversal_child(*this);
     }
 
-    std::unique_ptr<TraversalParentBase<Output>> parent = nullptr;
+    std::unique_ptr<TraversalParentBase<Output, Ts>> parent = nullptr;
+
+    // override TriggerProxies<TraversalParentBase<Output, Ts>, Ts>::execution
+    TraversalParentBase<Output, Ts>& execution() override {
+      return *parent;
+    }
 
     inline void start() {
+      parent->set_traversal_child(static_cast<TraversalChildBase<Output>*>(this));
       parent->start();
-    }
-
-    inline void launch() {
-      parent->launch();
     }
 
     inline void end() {
       parent->end();
     }
 
-  private:
     void child_start() override {
       Child::start();
     }
@@ -141,17 +159,19 @@ struct Traversal {
     using Ctrl = traits::operator_control_t<Child>;
     static_assert(!Ctrl::is_reversed,
       "Partition operator does not support reversion. Use `with_buffer()` for the nearest `reverse`");
-    if constexpr (ET == Execute) {
-      return Child::template execute<TraversalChild<Child>>(
-        std::unique_ptr<TraversalParentBase<Output>>(parent->copy()),
+    constexpr ExecutionType SelfET =
+      Ts::has_non_empty_run_trigger ? ExecutionType::Object : ExecutionType::Execute;
+    if constexpr (ET == Construct) {
+      return Child::template construct<SelfET, TraversalChild<Child>>(
+        std::unique_ptr<TraversalParentBase<Output, Ts>>(parent->copy()),
         std::forward<X>(x) ...);
-    } else if constexpr (ET == Construct) {
-      return Child::template construct<ExecutionType::Execute, TraversalChild<Child>>(
-        std::unique_ptr<TraversalParentBase<Output>>(parent->copy()),
+    } else if constexpr (ET == Object || SelfET == Object) {
+      return TraversalChild<Child>(
+        std::unique_ptr<TraversalParentBase<Output, Ts>>(parent->copy()),
         std::forward<X>(x) ...);
     } else {
-      return TraversalChild<Child>(
-        std::unique_ptr<TraversalParentBase<Output>>(parent->copy()),
+      return Child::template execute<TraversalChild<Child>>(
+        std::unique_ptr<TraversalParentBase<Output, Ts>>(parent->copy()),
         std::forward<X>(x) ...);
     }
   }
@@ -162,6 +182,10 @@ struct TraversalExecution {
   TraversalChildBase<Output>* traversal_child = nullptr;
 
   auto_val(ctrl, default_control());
+
+  inline void set_traversal_child(TraversalChildBase<Output>* child) {
+    this->traversal_child = child;
+  }
 
   inline void start() {
     if (!traversal_child) {
@@ -192,8 +216,9 @@ struct TraversalExecution {
   static auto construct(ArgT&& ... args) {
     if constexpr (ET == Execute) {
       return TraversalParent<Exec, Output>(std::forward<ArgT>(args) ...);
+    } else /* if constexpr (ET == Object) */ {
+      return TraversalParent<Exec, Output>(std::forward<ArgT>(args) ...);
     }
-    // TODO(zzxx): handle ET == Object
   }
 };
 
@@ -210,8 +235,8 @@ inline auto operator | (Parent&& parent, TraversalArgs) {
   using O = typename P::OutputType;
   auto e = parent.template wrap<ExecutionType::Construct, TraversalExecution<O>>();
   using E = decltype(e);
-  return Traversal<O>{
-    std::unique_ptr<TraversalParentBase<O>>(new E(std::move(e)))
+  return Traversal<O, typename E::TriggersType>{
+    std::unique_ptr<TraversalParentBase<O, typename E::TriggersType>>(new E(std::move(e)))
   };
 }
 } // namespace coll

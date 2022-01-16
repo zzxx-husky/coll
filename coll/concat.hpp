@@ -51,8 +51,18 @@ struct Concat {
 
   // [0, X) for Parent1, [X, Y) for Parent2, [Y + 1, Z) for Child
   template<typename Parent1, typename Parent2, typename Child,
-           size_t XN, size_t YN>
-  struct Execution : public Parent1, public Parent2, public Child {
+    size_t XN, size_t YN, typename Triggers = typename MergedTriggers<
+      typename Parent1::TriggersType, typename Parent2::TriggersType>::type>
+  struct Execution: public Child {
+    using TriggersType = typename MergedTriggers<Triggers,
+      typename MergedTriggers<
+        typename MapTriggers<typename Parent1::TriggersType, Left>::type,
+        typename MapTriggers<typename Parent2::TriggersType, Right>::type
+      >::type>::type;
+
+    Parent1 parent1;
+    Parent2 parent2;
+
     template<typename ... XYZ,
       size_t ZN = sizeof ... (XYZ) - XN - YN - 1>
     Execution(XYZ&& ... xyz): Execution(
@@ -64,66 +74,64 @@ struct Concat {
 
     template<typename TupleXYZ, size_t ... XI, size_t ... YI, size_t ... ZI>
     Execution(TupleXYZ&& xyz, std::index_sequence<XI...>, std::index_sequence<YI...>, std::index_sequence<ZI...>):
-      Parent1(std::get<XI>(xyz)..., static_cast<Child&>(*this)),
-      Parent2(std::get<XN + YI>(xyz)..., static_cast<Child&>(*this)),
+      parent1(std::get<XI>(xyz)...),
+      parent2(std::get<XN + YI>(xyz)...),
       Child  (std::get<XN + YN + 1 + ZI>(xyz)...) {
+      parent1.remove_end_child = this;
+      parent2.remove_end_child = this;
+    }
+
+    Execution(const Execution<Parent1, Parent2, Child, XN, YN>& e):
+      parent1(e.parent1),
+      parent2(e.parent2),
+      Child(e) {
+      parent1.remove_end_child = this;
+      parent2.remove_end_child = this;
+    }
+
+    Execution(Execution<Parent1, Parent2, Child, XN, YN>&& e):
+      parent1(std::move(e.parent1)),
+      parent2(std::move(e.parent2)),
+      Child(std::move(static_cast<Child&>(e))) {
+      parent1.remove_end_child = this;
+      parent2.remove_end_child = this;
     }
 
     inline auto& control() {
       return Child::control();
     }
 
-    // This is used to run the execution.
-    inline void launch() {
-      if constexpr (traits::execution_has_launch<Parent1>::value) {
-        Parent1::launch();
+    template<typename ... A>
+    inline void run(A&& ... args) {
+      if constexpr (traits::execution_has_run<Parent1, A ...>::value) {
+        parent1.run(args ...);
       }
-      if constexpr (traits::execution_has_launch<Parent2>::value) {
-        Parent2::launch();
+      if constexpr (traits::execution_has_run<Parent2, A ...>::value) {
+        parent2.run(args ...);
       }
     }
 
     // Invoke the first parent only
     template<typename ... ArgT>
-    inline void feed(Left, ArgT&& ... args) {
-      Parent1::feed(std::forward<ArgT>(args) ...);
+    inline void run(Left, ArgT&& ... args) {
+      parent1.run(std::forward<ArgT>(args) ...);
     }
 
     // Invoke the second parent only
     template<typename ... ArgT>
-    inline void feed(Right, ArgT&& ... args) {
-      Parent2::feed(std::forward<ArgT>(args) ...);
-    }
-
-    template<typename ... ArgT>
-    inline void feed(ArgT&& ... args) {
-      // there must be one and only one parent that accepts these args
-      static_assert(traits::execution_has_feed<Parent1, ArgT ...>::value !=
-        traits::execution_has_feed<Parent2, ArgT ...>::value);
-      if constexpr (traits::execution_has_feed<Parent1, ArgT ...>::value) {
-        Parent1::feed(std::forward<ArgT>(args) ...);
-      } else /* if constexpr (traits::execution_has_feed<Parent2, ArgT ...>::value) */ {
-        Parent2::feed(std::forward<ArgT>(args) ...);
-      }
+    inline void run(Right, ArgT&& ... args) {
+      parent2.run(std::forward<ArgT>(args) ...);
     }
 
     inline void start() {
-      if constexpr (traits::execution_has_start<Parent1>::value) {
-        Parent1::start();
-      }
-      if constexpr (traits::execution_has_start<Parent2>::value) {
-        Parent2::start();
-      }
+      parent1.start();
+      parent2.start();
       Child::start();
     }
 
     inline void end() {
-      if constexpr (traits::execution_has_end<Parent1>::value) {
-        Parent1::end();
-      }
-      if constexpr (traits::execution_has_end<Parent2>::value) {
-        Parent2::end();
-      }
+      parent1.end();
+      parent2.end();
       Child::end();
     }
 
@@ -137,20 +145,16 @@ struct Concat {
   template<ExecutionType ET2, typename Parent2,
     ExecutionType ETChild, typename Child, size_t YN, size_t ZN>
   struct RemoveEnd1 {
-    RemoveEnd1(Child& child):
-      child(child) {
-    }
-
-    Child& child;
+    Child* remove_end_child = nullptr;
 
     inline auto& control() {
-      return child.control();
+      return remove_end_child->control();
     }
 
     inline void start() {}
 
     inline void process(OutputType e) {
-      child.process(std::forward<OutputType>(e));
+      remove_end_child->process(std::forward<OutputType>(e));
     }
 
     inline void end() {}
@@ -182,24 +186,22 @@ struct Concat {
 
   template<ExecutionType ETChild, typename Child, size_t ZN>
   struct RemoveEnd2 {
-    RemoveEnd2(Child& child):
-      child(child) {
-    }
-
-    Child& child;
+    Child* remove_end_child = nullptr;
 
     inline auto& control() {
-      return child.control();
+      return remove_end_child->control();
     }
 
     inline void start() {}
 
     inline void process(OutputType e) {
-      child.process(std::forward<OutputType>(e));
+      remove_end_child->process(std::forward<OutputType>(e));
     }
 
     inline void end() {}
 
+    // y... + parent1 + z...
+    // y... are the arguments to construct Parent2
     template<ExecutionType ET2, typename Parent2, typename ... YZ,
       size_t YN = sizeof...(YZ) - 1 - ZN>
     static auto construct(YZ&& ... yz) {
@@ -220,7 +222,8 @@ struct Concat {
     auto& parent2 = [&]() -> auto& {
       if constexpr (Ctrl::is_reversed) { return parent; } else { return args.parent; }
     }();
-    // wrap parent2 first which constructs a RemoveEnd2
+    // parent1 is used for wrapping the Parent1 part
+    // z... are the arguments to construct Child
     return parent2.template wrap<ExecutionType::Construct,
       RemoveEnd2<ET, Child, ZN>>(parent1, std::forward<Z>(z)...);
   }

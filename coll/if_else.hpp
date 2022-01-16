@@ -57,11 +57,11 @@ struct IfElse {
     inline void process(InputType e) {
       if (args.condition(e)) {
         if (likely(!if_child.control().break_now)) {
-          if_child.feed(e);
+          if_child.run(e);
         }
       } else {
         if (likely(!else_child.control().break_now)) {
-          else_child.feed(e);
+          else_child.run(e);
         }
       }
       if (unlikely(if_child.control().break_now &&
@@ -76,12 +76,12 @@ struct IfElse {
     }
 
     inline void end() {
-      if constexpr (traits::execution_has_launch<ElseChild>::value) {
-        else_child.launch();
+      if constexpr (traits::execution_has_run<ElseChild>::value) {
+        else_child.run();
       }
       else_child.end();
-      if constexpr (traits::execution_has_launch<IfChild>::value) {
-        if_child.launch();
+      if constexpr (traits::execution_has_run<IfChild>::value) {
+        if_child.run();
       }
       if_child.end();
     }
@@ -90,7 +90,7 @@ struct IfElse {
     static decltype(auto) execute(ArgT&& ... args) {
       auto exec = Exec(std::forward<ArgT>(args)...);
       exec.start();
-      exec.launch();
+      exec.run();
       exec.end();
     }
   };

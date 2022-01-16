@@ -2,6 +2,7 @@
 
 #include "base.hpp"
 #include "traits.hpp"
+#include "triggers.hpp"
 
 namespace coll {
 
@@ -14,6 +15,8 @@ struct IterateByIterator {
 
   template<typename Child>
   struct Execution : public Child {
+    using TriggersType = Triggers<Run<>>;
+
     Iter left, right;
 
     template<typename ...X>
@@ -23,7 +26,7 @@ struct IterateByIterator {
       Child(std::forward<X>(x)...) {
     }
 
-    inline void launch() {
+    inline void run() {
       using Ctrl = traits::operator_control_t<Child>;
       if constexpr (Ctrl::is_reversed) {
         for (auto i = right; i != left && !this->control().break_now;) {
@@ -62,6 +65,8 @@ struct IterateByIterable {
 
   template<typename Child>
   struct Execution : public Child {
+    using TriggersType = Triggers<Run<>>;
+
     Iter iterable;
 
     template<typename ... X>
@@ -70,7 +75,7 @@ struct IterateByIterable {
       Child(std::forward<X>(x)...) {
     }
 
-    inline void launch() {
+    inline void run() {
       using Ctrl = traits::operator_control_t<Child>;
       if constexpr (Ctrl::is_reversed) {
         for (auto i = std::rbegin(iterable), e = std::rend(iterable);
@@ -110,6 +115,8 @@ struct IterateOptional {
 
   template<typename Child>
   struct Execution : public Child {
+    using TriggersType = Triggers<Run<>>;
+
     Opt optional;
 
     template<typename ... X>
@@ -118,7 +125,7 @@ struct IterateOptional {
       Child(std::forward<X>(x)...) {
     }
 
-    inline void launch() {
+    inline void run() {
       if (!this->control().break_now && bool(optional)) {
         Child::process(*optional);
       }
@@ -150,6 +157,8 @@ struct Generator {
 
   template<typename Child>
   struct Execution : public Child {
+    using TriggersType = Triggers<Run<>>;
+
     IsEmpty is_empty;
     Next next;
 
@@ -160,7 +169,7 @@ struct Generator {
       Child(std::forward<X>(x)...) {
     }
 
-    inline void launch() {
+    inline void run() {
       using Ctrl = traits::operator_control_t<Child>;
       static_assert(!Ctrl::is_reversed, "Generator does not support reverse iteration. "
         "Consider to use `with_buffer()` for the closest downstream `reverse()` operator.");
@@ -208,6 +217,8 @@ struct PostIterateResultOfExecution {
 
   template<typename Child>
   struct Execution : public Child {
+    using TriggersType = Triggers<Run<OutputType>>;
+
     template<typename ... X>
     Execution(ParentExecution parent, X&& ... x):
       parent(parent),
@@ -216,13 +227,12 @@ struct PostIterateResultOfExecution {
 
     ParentExecution parent;
 
-    template<typename ... Y>
-    inline void feed(Y&& ... y) {
-      parent.feed(std::forward<Y>(y)...);
+    inline void run(OutputType y) {
+      parent.run(std::forward<OutputType>(y));
     }
 
-    inline void launch() {
-      parent.launch();
+    inline void run() {
+      parent.run();
     }
 
     inline void end() {

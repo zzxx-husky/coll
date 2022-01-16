@@ -1,6 +1,7 @@
 #pragma once
 
 #include "base.hpp"
+#include "triggers.hpp"
 
 namespace coll {
 template<typename I, typename S = NullArg>
@@ -12,6 +13,8 @@ struct Range {
 
   template<typename Child>
   struct Execution : public Child {
+    using TriggersType = Triggers<Run<>>;
+
     I left, right;
     S step;
 
@@ -23,7 +26,7 @@ struct Range {
       Child(std::forward<X>(x)...) {
     }
 
-    inline void launch() {
+    inline void run() {
       using Ctrl = traits::operator_control_t<Child>;
       if constexpr (Ctrl::is_reversed) {
         for (auto i = right; left < i && !this->control().break_now;) {

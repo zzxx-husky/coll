@@ -1,6 +1,7 @@
 #pragma once
 
 #include "base.hpp"
+#include "triggers.hpp"
 
 namespace coll {
 template<typename Input>
@@ -9,12 +10,14 @@ struct PlaceHolder {
 
   template<typename Child>
   struct Execution: public Child {
+    using TriggersType = Triggers<Run<Input>>;
+
     template<typename ... X>
     Execution(X&& ... x):
       Child(std::forward<X>(x) ...) {
     }
 
-    inline void feed(Input e) {
+    inline void run(Input e) {
       Child::process(std::forward<Input>(e));
     }
   };
@@ -54,7 +57,7 @@ struct PostPlaceHolder {
     }
 
     inline void process(OutputType e) {
-      child_exec.feed(std::forward<OutputType>(e));
+      child_exec.run(std::forward<OutputType>(e));
     }
 
     inline void end() {
@@ -70,7 +73,7 @@ struct PostPlaceHolder {
     template<typename SrcExec, typename ... ArgT>
     static decltype(auto) execute(ArgT&& ... args) {
       SrcExec src_exec{std::forward<ArgT>(args)...};
-      src_exec.launch();
+      src_exec.run();
       src_exec.end();
       return src_exec.result();
     }

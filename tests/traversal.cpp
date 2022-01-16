@@ -78,14 +78,14 @@ GTEST_TEST(Traversal, Reverse) {
 
 GTEST_TEST(Traversal, Break) {
   {
-    auto a = coll::range(10)
+    coll::Traversal<int&> a = coll::range(10)
       | coll::take_while(anony_cc(_ < 3))
       | coll::to_traversal();
 
     EXPECT_EQ(a | coll::sum() | coll::unwrap(), 0 + 1 + 2);
   }
   {
-    auto a = coll::range(10)
+    coll::Traversal<int&> a = coll::range(10)
       | coll::to_traversal();
 
     EXPECT_EQ(
@@ -93,4 +93,48 @@ GTEST_TEST(Traversal, Break) {
       0 + 1 + 2
     );
   }
+}
+
+GTEST_TEST(Traversal, PlaceHolder) {
+  coll::Traversal<int, coll::Triggers<coll::Run<int>>> a = coll::place_holder<int>()
+    | coll::map(anony_cc(_ + 1))
+    | coll::to_traversal();
+
+  auto b = coll::place_holder<int>()
+    | coll::map(anony_cc(_ * 2))
+    | coll::to_traversal();
+
+  auto e = coll::elements(a, b)
+    | coll::map(anony_cc(_ | coll::to_vector()))
+    | coll::to_vector();
+
+  e[0].start();
+  e[0].run(0);
+  e[0].run(1);
+  e[0].end();
+  EXPECT_EQ(e[0].result(), (std::vector<int>{1, 2}));
+
+  e[1].start();
+  e[1].run(2);
+  e[1].run(3);
+  e[1].end();
+  EXPECT_EQ(e[1].result(), (std::vector<int>{4, 6}));
+}
+
+GTEST_TEST(Traversal, Concat) {
+  auto t = coll::place_holder<int>()
+    | coll::concat(coll::elements(1, 2, 3, 4))
+    | coll::to_traversal();
+
+  auto e = t | coll::sum();
+
+  e.start();
+  e.run();
+  EXPECT_EQ(e.result(), (1+2+3+4));
+  e.run(coll::Right::value);
+  EXPECT_EQ(e.result(), 2 * (1+2+3+4));
+  e.run(-10);
+  EXPECT_EQ(e.result(), (1+2+3+4));
+  e.run(coll::Left::value, -10);
+  EXPECT_EQ(e.result(), 0);
 }

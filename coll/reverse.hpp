@@ -72,7 +72,7 @@ struct Reverse {
     std::conditional_t<Args::is_cache_by_ref,      traits::remove_vr_t<InputType>&,
                                                    traits::remove_cvr_t<InputType>&
   >>;
-      
+
   Parent parent;
   Args args;
 

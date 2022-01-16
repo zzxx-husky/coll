@@ -106,7 +106,7 @@ struct To {
     static decltype(auto) execute(ArgT&& ... args) {
       auto exec = Exec(std::forward<ArgT>(args)...);
       exec.start();
-      exec.launch();
+      exec.run();
       exec.end();
       return exec.result();
     }

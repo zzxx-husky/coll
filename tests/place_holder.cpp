@@ -11,7 +11,7 @@ GTEST_TEST(PlaceHolder, PostIterateExecutable) {
   int a[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
   y.start();
   for (int i = 0; i < 10; i++) {
-    y.feed(a[i]);
+    y.run(a[i]);
   }
   y.end();
   EXPECT_EQ(c, 10);
@@ -57,19 +57,19 @@ GTEST_TEST(PlaceHolder, Concat) {
 
   z.start();
 
-  z.feed(coll::Left::value, 1);
+  z.run(coll::Left::value, 1);
   EXPECT_EQ(v.size(), 1);
   EXPECT_EQ(v.back(), 1 + 1);
 
-  z.feed(coll::Right::value, 2);
+  z.run(coll::Right::value, 2);
   EXPECT_EQ(v.size(), 2);
   EXPECT_EQ(v.back(), 2 * 2);
 
-  z.feed(coll::Left::value, 3);
+  z.run(coll::Left::value, 3);
   EXPECT_EQ(v.size(), 3);
   EXPECT_EQ(v.back(), 3 + 1);
 
-  z.feed(coll::Right::value, 4);
+  z.run(coll::Right::value, 4);
   EXPECT_EQ(v.size(), 4);
   EXPECT_EQ(v.back(), 4 * 2);
 
@@ -98,19 +98,19 @@ GTEST_TEST(PlaceHolder, Concat2) {
 
   w.start();
 
-  w.feed(coll::Left::value, coll::Left::value, 1);
+  w.run(coll::Left::value, coll::Left::value, 1);
   EXPECT_EQ(v.size(), 1);
   EXPECT_EQ(v.back(), 1 + 1);
 
-  w.feed(coll::Left::value, coll::Right::value, 2);
+  w.run(coll::Left::value, coll::Right::value, 2);
   EXPECT_EQ(v.size(), 2);
   EXPECT_EQ(v.back(), 2 * 2);
 
-  w.feed(coll::Right::value, coll::Left::value, 3);
+  w.run(coll::Right::value, coll::Left::value, 3);
   EXPECT_EQ(v.size(), 3);
   EXPECT_EQ(v.back(), 3 - 3);
 
-  w.feed(coll::Right::value, coll::Right::value, 4);
+  w.run(coll::Right::value, coll::Right::value, 4);
   EXPECT_EQ(v.size(), 4);
   EXPECT_EQ(v.back(), 4 / 4);
 
