@@ -74,9 +74,9 @@ struct Concat {
 
     template<typename TupleXYZ, size_t ... XI, size_t ... YI, size_t ... ZI>
     Execution(TupleXYZ&& xyz, std::index_sequence<XI...>, std::index_sequence<YI...>, std::index_sequence<ZI...>):
-      parent1(std::get<XI>(xyz)...),
-      parent2(std::get<XN + YI>(xyz)...),
-      Child  (std::get<XN + YN + 1 + ZI>(xyz)...) {
+      parent1(std::forward<std::tuple_element_t<XI, TupleXYZ>>(std::get<XI>(xyz))...),
+      parent2(std::forward<std::tuple_element_t<XN + YI, TupleXYZ>>(std::get<XN + YI>(xyz))...),
+      Child  (std::forward<std::tuple_element_t<XN + YN + 1 + ZI, TupleXYZ>>(std::get<XN + YN + 1 + ZI>(xyz))...) {
       parent1.remove_end_child = this;
       parent2.remove_end_child = this;
     }
