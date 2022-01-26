@@ -3,11 +3,14 @@
 #include <queue>
 #include <vector>
 
+#include "base.hpp"
+#include "utils.hpp"
+
 namespace coll {
 template<typename T, typename Cmp = std::greater<T>>
 struct TopK {
   std::priority_queue<T, std::vector<T>, Cmp> elems;
-  const size_t K;
+  size_t K;
 
   TopK(size_t K): K(K) {}
 
@@ -43,7 +46,7 @@ inline TopK<T, Cmp> topk(size_t k, Cmp comparator) {
 
 template<typename Comparator>
 struct TopKBuilder {
-  const size_t K;
+  size_t K;
   Comparator cmp;
 
   template<typename AnotherComparator>
