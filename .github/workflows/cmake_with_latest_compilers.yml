@@ -1,0 +1,112 @@
+name: CMakeWithLatestCompilers
+
+defaults:
+  run:
+    shell: bash -ieo pipefail {0}
+
+on:
+  schedule:
+    - cron: '0 0 * * 1'
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+env:
+  # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
+  BUILD_TYPE: Release
+
+jobs:
+  build:
+    # The CMake configure and build commands are platform agnostic and should work equally
+    # well on Windows or Mac.  You can convert this to a matrix build if you need
+    # cross-platform coverage.
+    # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set up latest GCC
+      uses: egor-tensin/setup-gcc@v1
+      with:
+        version: 11
+        platform: x64
+
+    - name: Set up latest Clang
+      uses: egor-tensin/setup-clang@v1
+      with:
+        version: 13
+        platform: x64
+
+    - name: Compilers' version
+      run: |
+        gcc --version
+        g++ --version
+
+        clang --version
+        clang++ --version
+
+    - name: Install dependencies
+      run: |
+        echo "install ZAF"
+        cd ${{github.workspace}}/../
+        git clone --depth 1 https://github.com/zzxx-husky/inst_scripts
+        ./inst_scripts/install_coll.sh --deps-only
+        cd ${{github.workspace}}
+      env:
+        CC: gcc
+        CXX: g++
+
+    - name: Compile with GCC
+      run: |
+        source ${{github.workspace}}/../inst_scripts/instrc.sh
+        echo ${ZMQ_ROOT}
+        echo ${GTEST_ROOT}
+        echo ${GLOG_ROOT}
+        echo ${PHMAP_ROOT}
+        echo ${ZAF_ROOT}
+        cmake -S . -B ${{github.workspace}}/release -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+        cmake --build ${{github.workspace}}/release -j4
+        cd ${{github.workspace}}/release
+        echo "Run Tests"
+        timeout 10 ./tests/Tests
+        echo "Run HelloWorld"
+        timeout 10 ./examples/HelloWorld
+        echo "Run Calendar"
+        timeout 10 ./examples/Calendar
+        echo "Run FirstNMax"
+        timeout 10 ./examples/FirstNMax
+        echo "Run TopkFreqWords"
+        timeout 10 ./examples/TopkFreqWords
+        echo "RUn SortUnique"
+        timeout 10 ./examples/SortUnique
+        echo "ParallelSort"
+        timeout 20 ./benchmarks/ParallelSort
+      env:
+        CC: gcc
+        CXX: g++
+
+    - name: Compile with Clang
+      run: |
+        source ${{github.workspace}}/../inst_scripts/instrc.sh
+        cmake -S . -B ${{github.workspace}}/release_clang -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+        cmake --build ${{github.workspace}}/release_clang -j4
+        cd ${{github.workspace}}/release_clang
+        echo "Run Tests"
+        timeout 10 ./tests/Tests
+        echo "Run HelloWorld"
+        timeout 10 ./examples/HelloWorld
+        echo "Run Calendar"
+        timeout 10 ./examples/Calendar
+        echo "Run FirstNMax"
+        timeout 10 ./examples/FirstNMax
+        echo "Run TopkFreqWords"
+        timeout 10 ./examples/TopkFreqWords
+        echo "RUn SortUnique"
+        timeout 10 ./examples/SortUnique
+        echo "ParallelSort"
+        timeout 20 ./benchmarks/ParallelSort
+      env:
+        CC: clang
+        CXX: clang++
+

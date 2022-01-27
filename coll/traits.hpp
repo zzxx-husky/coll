@@ -1,6 +1,7 @@
 #pragma once
 
 #include <iterator>
+#include <optional>
 #include <string_view>
 #include <utility>
 
