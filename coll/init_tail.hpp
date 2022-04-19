@@ -43,12 +43,13 @@ struct InitTail {
 
     template<typename ... X>
     InitExecution(const Args& args, X&& ... x):
-      args(args),
-      Child(std::forward<X>(x)...) {
+      Child(std::forward<X>(x)...),
+      args(args) {
     }
 
     inline void process(InputType e) {
       if (likely(bool(prev_elem))) {
+        // GCC may warn maybe-uninitialized due to the use of std::optional
         Child::process(*prev_elem);
       }
       prev_elem = e;
@@ -62,8 +63,8 @@ struct InitTail {
 
     template<typename ... X>
     TailExecution(const Args& args, X&& ... x):
-      args(args),
-      Child(std::forward<X>(x)...) {
+      Child(std::forward<X>(x)...),
+      args(args) {
     }
 
     inline void process(InputType e) {

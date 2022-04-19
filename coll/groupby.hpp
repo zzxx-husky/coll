@@ -24,8 +24,8 @@ struct GroupByArgs {
 
   KeyBy keyby;
   ValueBy valby = Identity::value;
-  Aggregator aggregator;
-  AggregateTo aggregate_to;
+  Aggregator aggregator{};
+  AggregateTo aggregate_to{};
 
   // used by user
   template<typename AnotherAggregator, typename AnotherAggregateTo>

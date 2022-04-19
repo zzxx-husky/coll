@@ -103,14 +103,14 @@ struct Parallel {
   struct Execution : public Child {
     template<typename ... X>
     Execution(const Args& args, X&& ... x):
-      args(args),
-      Child(std::forward<X>(x)...) {
+      Child(std::forward<X>(x)...),
+      args(args) {
     }
 
     inline void start() {
       auto& actor_group = this->args.get_actor_group();
       std::vector<zaf::Actor> executors(args.parallelism);
-      for (int i = 0; i < args.parallelism; i++) {
+      for (size_t i = 0; i < args.parallelism; i++) {
         executors[i] = actor_group.template spawn<ParallelExecutor>(this->args, i);
       }
       shuffler.initialize(actor_group, executors);
@@ -128,7 +128,8 @@ struct Parallel {
       }
 
       static auto ctor_partition_pipeline(Args& args, size_t pid,
-        zaf::ActorBehaviorX* this_actor, zaf::Actor& res_collector) {
+        [[maybe_unused]] zaf::ActorBehaviorX* this_actor,
+        [[maybe_unused]] zaf::Actor& res_collector) {
         if constexpr (IsPipeOperator) {
           return args.pipeline_builder(pid, place_holder<QueueInputType&>())
             | foreach([=, &res_collector](OutputType o) {

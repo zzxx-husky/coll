@@ -114,14 +114,14 @@ GTEST_TEST(Container, Iterator) {
     | coll::inspect(anonyr_cv(count++))
     | coll::to_iter(a.begin(), a.end());
 
-  EXPECT_EQ(count, 0);
+  EXPECT_EQ(count, 0u);
 
   a.resize(1);
   coll::range(10)
     | coll::inspect(anonyr_cv(count++))
     | coll::to_iter(a.begin(), a.end());
 
-  EXPECT_EQ(count, 1);
+  EXPECT_EQ(count, 1u);
 
   count = 0;
   a.resize(10);
@@ -129,7 +129,7 @@ GTEST_TEST(Container, Iterator) {
     | coll::inspect(anonyr_cv(count++))
     | coll::to_iter(a.begin());
 
-  EXPECT_EQ(count, 10);
+  EXPECT_EQ(count, 10u);
   EXPECT_EQ(iter, a.end());
 
   count = 0;
@@ -139,6 +139,6 @@ GTEST_TEST(Container, Iterator) {
     | coll::inspect(anonyr_cv(count++))
     | coll::to_iter(a.begin());
 
-  EXPECT_EQ(count, 10);
+  EXPECT_EQ(count, 10u);
   EXPECT_EQ(iter, a.begin() + 10);
 }

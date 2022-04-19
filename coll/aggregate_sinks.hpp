@@ -57,6 +57,7 @@ inline auto operator | (Parent&& parent, Args&& args) {
     std::optional<typename traits::remove_cvr_t<InputType>>
   >;
   auto find_minmax = [&](auto& ref_or_opt, auto&& e) {
+    // GCC may warn maybe-uninitialized due to the use of std::optional
     if (!bool(ref_or_opt) || args.comparator(e, *ref_or_opt)) {
       ref_or_opt = e;
     }
@@ -72,7 +73,7 @@ struct ReduceArgs {
   using TagType = ReduceArgsTag;
 
   R reducer;
-  InitVal init_val;
+  InitVal init_val{};
 
   template<typename AnotherInitVal>
   inline ReduceArgs<R, AnotherInitVal> init(AnotherInitVal i) {
@@ -109,6 +110,7 @@ inline auto operator | (Parent&& parent, Args&& args) {
     using ElemType = typename traits::remove_cvr_t<InputType>;
     auto reducer = [&](auto& opt, auto&& e) {
       if (likely(bool(opt))) {
+        // GCC may warn maybe-uninitialized due to the use of std::optional
         args.reducer(*opt, std::forward<decltype(e)>(e));
       } else {
         opt = e;
@@ -138,7 +140,7 @@ struct AvgArgs {
   using TagType = AvgArgsTag;
 
   Add add;
-  InitVal init_val;
+  InitVal init_val{};
 
   template<typename AnotherInitVal>
   inline AvgArgs<Add, AnotherInitVal> init(AnotherInitVal i) {

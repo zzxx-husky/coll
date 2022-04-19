@@ -16,7 +16,7 @@ struct PrintArgs {
   std::string start;
   std::string delimiter;
   std::string end;
-  F formater;
+  F formater{};
 
   constexpr static bool has_formatter =
     !std::is_same<F, NullArg>::value;

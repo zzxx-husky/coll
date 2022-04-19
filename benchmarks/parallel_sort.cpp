@@ -38,7 +38,7 @@ int main() {
       | coll::tail()
       | coll::to<std::vector>();
     auto sorted_ints2 = coll::range(P)
-      | coll::parallel(T, [&](auto tid, auto in) {
+      | coll::parallel(T, [&](auto, auto in) {
           return in | coll::map([&](auto pid) {
             // iterate the entire ints2 and select those integers falling in the partition
             // one main cost is scanning on the entire ints2 for each partition
@@ -52,7 +52,7 @@ int main() {
             );
           });
         })
-      | coll::aggregate([=](auto type) {
+      | coll::aggregate([=](auto&&) {
           // Aggregator
           std::vector<int> vec;
           vec.reserve(N);
@@ -97,7 +97,7 @@ int main() {
     zaf::ActorEngine actor_engine{coll::parallel_utils::actor_system, T};
 
     auto sorted_ints3 = coll::range(M)
-      | coll::parallel(M, [&](auto _, auto in) {
+      | coll::parallel(M, [&](auto&&, auto in) {
           return in | coll::flatmap([&](size_t pid) {
             auto par_begin = ints3.size() / M * pid + std::min(pid, ints3.size() % M);
             auto par_end = par_begin + ints3.size() / M + (pid < ints3.size() % M);
@@ -107,7 +107,7 @@ int main() {
           });
         })
         .execute_by(actor_engine)
-      | coll::parallel_partition(R, [&](auto _, auto in) {
+      | coll::parallel_partition(R, [&](auto&&, auto in) {
           return in
             | coll::flatmap(anony_rr(_.second))
             | coll::sort()
@@ -120,7 +120,7 @@ int main() {
             vs[v.first] = std::move(v.second);
           })
       | coll::iterate()
-      | coll::aggregate([=](auto type) {
+      | coll::aggregate([=](auto&&) {
           std::vector<int> vec;
           vec.reserve(N);
           return vec;

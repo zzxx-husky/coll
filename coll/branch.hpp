@@ -31,9 +31,9 @@ struct Branch {
   struct Execution : public OutputChild {
     template<typename B, typename ... X>
     Execution(Args& args, B&& branch_child, X&& ... x):
+      OutputChild(std::forward<X>(x) ...),
       args(args),
-      branch_child(std::move(branch_child)),
-      OutputChild(std::forward<X>(x) ...) {
+      branch_child(std::move(branch_child)) {
     }
 
     Args args;

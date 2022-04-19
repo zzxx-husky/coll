@@ -6,8 +6,8 @@
 
 class InitTail : public ::testing::Test {
 public:
-  inline static std::vector<int> ints;
-  inline static std::vector<Scapegoat> goats;
+  inline static std::vector<int> ints{};
+  inline static std::vector<Scapegoat> goats{};
 
 protected:
   static void SetUpTestSuite() {
@@ -21,7 +21,6 @@ protected:
 
   static void TearDownTestSuite() {}
 };
-
 
 TEST_F(InitTail, Init) {
   auto r = coll::iterate(InitTail::ints)
@@ -163,7 +162,7 @@ TEST_F(InitTail, TailReverseGoatRef) {
 
 TEST_F(InitTail, IterateSourceTail) {
   auto r = coll::generate([&, i = 0]() mutable -> auto& { return InitTail::ints[i++]; })
-      .until([&, i = 0]() mutable { return i++ == InitTail::ints.size(); })
+      .until([&, i = 0ul]() mutable { return i++ == InitTail::ints.size(); })
     | coll::tail()
     | coll::filter([i = InitTail::ints.begin()](auto&& v) mutable {
         return *(++i) != v;
@@ -174,7 +173,7 @@ TEST_F(InitTail, IterateSourceTail) {
 
 TEST_F(InitTail, IterateSourceTailGoat) {
   auto r = coll::generate([&, i = 0]() mutable -> auto& { return InitTail::goats[i++]; })
-      .until([&, i = 0]() mutable { return i++ == InitTail::goats.size(); })
+      .until([&, i = 0ul]() mutable { return i++ == InitTail::goats.size(); })
     | coll::tail()
     | coll::filter([i = InitTail::goats.begin()](auto&& v) mutable {
         return *(++i) != v;
@@ -186,7 +185,7 @@ TEST_F(InitTail, IterateSourceTailGoat) {
 TEST_F(InitTail, IterateSourceTailGoatRef) {
   ScapegoatCounter::clear();
   auto r = coll::generate([&, i = 0]() mutable -> auto& { return InitTail::goats[i++]; })
-      .until([&, i = 0]() mutable { return i++ == InitTail::goats.size(); })
+      .until([&, i = 0ul]() mutable { return i++ == InitTail::goats.size(); })
     | coll::tail().cache_by_ref()
     | coll::filter([i = InitTail::goats.begin()](auto&& v) mutable {
         return *(++i) != v;
@@ -199,7 +198,7 @@ TEST_F(InitTail, IterateSourceTailGoatRef) {
 
 TEST_F(InitTail, IterateSourceTailReverseGoatRef) {
   auto r = coll::generate([&, i = 0]() mutable -> auto& { return InitTail::goats[i++]; })
-      .until([&, i = 0]() mutable { return i++ == InitTail::goats.size(); })
+      .until([&, i = 0ul]() mutable { return i++ == InitTail::goats.size(); })
     | coll::tail().cache_by_ref()
     | coll::reverse().with_buffer()
     | coll::filter([i = InitTail::goats.rbegin()](auto&& v) mutable {
@@ -212,7 +211,7 @@ TEST_F(InitTail, IterateSourceTailReverseGoatRef) {
 TEST_F(InitTail, IterateSourceTailReverseRefGoatRef) {
   ScapegoatCounter::clear();
   auto r = coll::generate([&, i = 0]() mutable -> auto& { return InitTail::goats[i++]; })
-      .until([&, i = 0]() mutable { return i++ == InitTail::goats.size(); })
+      .until([&, i = 0ul]() mutable { return i++ == InitTail::goats.size(); })
     | coll::tail().cache_by_ref()
     | coll::reverse().with_buffer().cache_by_ref()
     | coll::filter([i = InitTail::goats.rbegin()](auto&& v) mutable {

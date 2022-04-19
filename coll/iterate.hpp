@@ -21,9 +21,9 @@ struct IterateByIterator {
 
     template<typename ...X>
     Execution(const Iter& left, const Iter& right, X&& ... x):
+      Child(std::forward<X>(x)...),
       left(left),
-      right(right),
-      Child(std::forward<X>(x)...) {
+      right(right) {
     }
 
     inline void run() {
@@ -71,8 +71,8 @@ struct IterateByIterable {
 
     template<typename ... X>
     Execution(const Iter& iterable, X&& ... x):
-      iterable(iterable),
-      Child(std::forward<X>(x)...) {
+      Child(std::forward<X>(x)...),
+      iterable(iterable) {
     }
 
     inline void run() {
@@ -121,8 +121,8 @@ struct IterateOptional {
 
     template<typename ... X>
     Execution(const Opt& optional, X&& ... x):
-      optional(optional),
-      Child(std::forward<X>(x)...) {
+      Child(std::forward<X>(x)...),
+      optional(optional) {
     }
 
     inline void run() {
@@ -164,9 +164,9 @@ struct Generator {
 
     template<typename ... X>
     Execution(const IsEmpty& is_empty, const Next& next, X&& ... x):
+      Child(std::forward<X>(x)...),
       is_empty(is_empty),
-      next(next),
-      Child(std::forward<X>(x)...) {
+      next(next) {
     }
 
     inline void run() {
@@ -221,8 +221,8 @@ struct PostIterateResultOfExecution {
 
     template<typename ... X>
     Execution(ParentExecution parent, X&& ... x):
-      parent(parent),
-      Child(std::forward<X>(x)...) {
+      Child(std::forward<X>(x)...),
+      parent(parent) {
     }
 
     ParentExecution parent;

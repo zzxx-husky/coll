@@ -17,9 +17,9 @@ public:
   >;
 
   WindowedElements(size_t size, size_t step):
-    window_size(size),
+    cur_steps(size),
     step(step),
-    cur_steps(size) {
+    window_size(size) {
     elems.reserve(size);
   }
 

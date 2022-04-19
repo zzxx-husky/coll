@@ -73,7 +73,7 @@ struct Aggregate {
 
     template<typename Exec, typename ... ArgT>
     static auto execute(ArgT&& ... args) {
-      auto exec = Exec(std::forward<ArgT>(args)...);
+      Exec exec(std::forward<ArgT>(args)...);
       exec.start();
       exec.run();
       exec.end();

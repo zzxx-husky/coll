@@ -118,9 +118,9 @@ private:
   class Dispatcher : public zaf::ActorBehaviorX {
   public:
     Dispatcher(const std::vector<zaf::Actor>& executors, zaf::Actor res_collector):
-      executors(executors),
+      res_collector(res_collector),
       quotas(executors.size()),
-      res_collector(res_collector) {
+      executors(executors) {
     }
 
     void start() override {

@@ -20,10 +20,10 @@ struct Range {
 
     template<typename ...X>
     Execution(I& left, I& right, S& step, X&& ... x):
+      Child(std::forward<X>(x)...),
       left(left),
       right(right),
-      step(step),
-      Child(std::forward<X>(x)...) {
+      step(step) {
     }
 
     inline void run() {

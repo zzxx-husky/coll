@@ -95,7 +95,7 @@ void make_calendar(int year, int months_per_row) {
         coll::range(6)
           | coll::inspect([&](int week) {
               coll::iterate(w) | coll::print("", "     ", "\n").to(out).format([&](auto& out, auto& i) {
-                out << std::setw(7 * 3) << (week < i.second.size() ? i.second[week].data() : "");
+                out << std::setw(7 * 3) << (week < int(i.second.size()) ? i.second[week].data() : "");
               });
             })
           | coll::act();

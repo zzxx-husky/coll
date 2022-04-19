@@ -17,7 +17,7 @@ GTEST_TEST(Branch, TwoBranches) {
     | coll::distinct()
     | coll::to(output);
 
-  EXPECT_EQ(branch.size(), 10);
+  EXPECT_EQ((int) branch.size(), 10);
   EXPECT_EQ(output.size(), std::unordered_set<int>(output.begin(), output.end()).size());
   EXPECT_EQ(branch.size() - 1,
     coll::range(branch.size() - 1)
@@ -50,7 +50,7 @@ GTEST_TEST(Branch, TwoByTwoBranches) {
     | coll::filter(anony_cc(_ % 2 == 1))
     | coll::to(_4);
 
-  EXPECT_EQ(_1.size() + _2.size(), 10);
+  EXPECT_EQ(int(_1.size() + _2.size()), 10);
   EXPECT_EQ(_1.size(),
     coll::iterate(_1)
       | coll::filter(anony_cc(_ % 2 == 0))

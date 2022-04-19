@@ -15,8 +15,8 @@ struct TopK {
   TopK(size_t K): K(K) {}
 
   TopK(size_t K, Cmp comparator):
-    K(K),
-    elems(comparator) {
+    elems(comparator),
+    K(K) {
   }
 
   template<typename U>
@@ -44,10 +44,10 @@ inline TopK<T, Cmp> topk(size_t k, Cmp comparator) {
   return {k, std::forward<Cmp>(comparator)};
 }
 
-template<typename Comparator>
+template<typename Comparator = NullArg>
 struct TopKBuilder {
   size_t K;
-  Comparator cmp;
+  Comparator cmp{};
 
   template<typename AnotherComparator>
   inline TopKBuilder<AnotherComparator> with(AnotherComparator another_cmp) {
@@ -72,7 +72,7 @@ struct TopKBuilder {
   }
 };
 
-inline TopKBuilder<NullArg> topk(size_t K) {
+inline TopKBuilder<> topk(size_t K) {
   return {K};
 }
 } // namespace coll

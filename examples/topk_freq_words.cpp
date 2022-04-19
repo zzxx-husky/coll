@@ -24,7 +24,7 @@ int main() {
 
   // print the results nicely
   coll::iterate(topk_freq_words_of_diff_lens)
-    | coll::println().format([](auto& out, auto& len2topk) {
+    | coll::println().format([](auto&&, auto& len2topk) {
         auto& topk = len2topk.second;
         // default element order in topk is from smallest to largest
         coll::generate([&]() { auto s = topk.top(); topk.pop(); return s; })

@@ -3,8 +3,8 @@
 #include <iostream>
 
 struct ScapegoatCounter {
-  inline static int num_scapegoat_copy;
-  inline static int num_scapegoat_move;
+  inline static int num_scapegoat_copy = 0;
+  inline static int num_scapegoat_move = 0;
 
   static void clear() {
     num_scapegoat_copy = num_scapegoat_move = 0;
@@ -21,15 +21,17 @@ struct Scapegoat {
 
   Scapegoat() = default;
 
-  explicit Scapegoat(int val): val(val) {}
+  explicit Scapegoat(int v):
+    val(v) {
+  }
 
-  Scapegoat(const Scapegoat& o) {
-    val = o.val;
+  Scapegoat(const Scapegoat& o):
+    val(o.val) {
     ++ScapegoatCounter::num_scapegoat_copy;
   }
 
-  Scapegoat(Scapegoat&& o) {
-    val = o.val;
+  Scapegoat(Scapegoat&& o):
+    val(o.val) {
     ++ScapegoatCounter::num_scapegoat_move;
   }
 

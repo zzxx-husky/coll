@@ -24,8 +24,8 @@ struct Sort {
 
     template<typename ... X>
     Execution(const Args& args, X&& ... x):
-      args(args),
-      Child(std::forward<X>(x)...) {
+      Child(std::forward<X>(x)...),
+      args(args) {
       ctrl = Child::control().forward();
     }
 
@@ -87,8 +87,8 @@ template<
   using TagType = SortArgsTag;
 
   // members
-  Comparator comparator;
-  BufferBuilder buffer_builder; // to be sorted by `std::sort`.
+  Comparator comparator{};
+  BufferBuilder buffer_builder{}; // to be sorted by `std::sort`.
 
   // used by user
   inline SortArgs<Comparator, BufferBuilder, true, Reverse>

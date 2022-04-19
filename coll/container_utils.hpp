@@ -13,7 +13,7 @@ inline void reserve(C& container, size_t reserve_size) {
 
 template<typename C,
   std::enable_if_t<!traits::has_reserve<C>::value>* = nullptr>
-inline void reserve(C& container, size_t reserve_size) {}
+inline void reserve(C&, size_t) {}
 
 template<typename E, typename C,
   std::enable_if_t<traits::has_emplace<C, E>::value>* = nullptr>
@@ -62,6 +62,6 @@ struct DefaultContainerInserter {
 template<template<typename ...> class ContainerTemplate>
 struct ContainerBuilder {
   template<typename T>
-  inline ContainerTemplate<T> operator()(Type<T> type) { return {}; };
+  inline ContainerTemplate<T> operator()(Type<T>) { return {}; };
 };
 } // namespace coll

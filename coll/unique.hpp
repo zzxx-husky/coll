@@ -41,8 +41,8 @@ struct Unique {
 
     template<typename ...X>
     Execution(const Args& args, X&& ... x):
-      args(args),
-      Child(std::forward<X>(x)...) {
+      Child(std::forward<X>(x)...),
+      args(args) {
     }
 
     inline void process(InputType e) {

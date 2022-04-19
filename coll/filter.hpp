@@ -28,14 +28,14 @@ struct Filter {
   struct Execution : public Child {
     template<typename ... X>
     Execution(const Args& args, X&& ... x):
-      args(args),
-      Child(std::forward<X>(x)...) {
+      Child(std::forward<X>(x)...),
+      args(args) {
     }
 
     Args args;
 
     inline void process(InputType e) {
-      if (args.filter(e)) {
+      if (bool(args.filter(e))) {
         Child::process(std::forward<InputType>(e));
       }
     }

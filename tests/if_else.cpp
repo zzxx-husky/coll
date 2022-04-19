@@ -12,8 +12,8 @@ GTEST_TEST(IfElse, Basic) {
         anonyr_cc(_ | coll::to(odd))
       );
 
-  EXPECT_EQ(even.size(), 100 / 2);
-  EXPECT_EQ(odd.size(), 100 / 2);
+  EXPECT_EQ((int) even.size(), 100 / 2);
+  EXPECT_EQ((int) odd.size(), 100 / 2);
   EXPECT_TRUE(coll::iterate(even) | coll::all(anony_cc(_ % 2 == 0)));
   EXPECT_TRUE(coll::iterate(odd) | coll::all(anony_cc(_ % 2 == 1)));
 }
@@ -37,10 +37,10 @@ GTEST_TEST(IfElse, NestedIfElse) {
               ))
       );
 
-  EXPECT_EQ(a.size(), 100 / 4);
-  EXPECT_EQ(b.size(), 100 / 4);
-  EXPECT_EQ(c.size(), 100 / 4);
-  EXPECT_EQ(d.size(), 100 / 4);
+  EXPECT_EQ((int) a.size(), 100 / 4);
+  EXPECT_EQ((int) b.size(), 100 / 4);
+  EXPECT_EQ((int) c.size(), 100 / 4);
+  EXPECT_EQ((int) d.size(), 100 / 4);
   EXPECT_TRUE(coll::iterate(a) | coll::all(anony_cc(_ % 4 == 0)));
   EXPECT_TRUE(coll::iterate(b) | coll::all(anony_cc(_ % 4 == 2)));
   EXPECT_TRUE(coll::iterate(c) | coll::all(anony_cc(_ % 4 == 1)));
@@ -56,8 +56,8 @@ GTEST_TEST(IfElse, WithConcat) {
         anonyr_cc(_ | coll::concat(coll::elements(101)) | coll::to(odd))
       );
 
-  EXPECT_EQ(even.size(), 100 / 2 + 1);
-  EXPECT_EQ(odd.size(), 100 / 2 + 1);
+  EXPECT_EQ((int) even.size(), 100 / 2 + 1);
+  EXPECT_EQ((int) odd.size(), 100 / 2 + 1);
   EXPECT_TRUE(coll::iterate(even) | coll::all(anony_cc(_ % 2 == 0)));
   EXPECT_TRUE(coll::iterate(odd) | coll::all(anony_cc(_ % 2 == 1)));
 }

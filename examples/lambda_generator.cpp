@@ -26,7 +26,7 @@ int main() {
                     name << "anony" << capture.first << '_' << input.first << output.first << "(...)";
 
                     std::ostringstream in;
-                    in << std::setw(4) << (input.first[0] ? "auto" : "")
+                    in << std::setw(16+4) << (input.first[0] ? "[[maybe_unused]]auto" : "")
                        << std::left << std::setw(3) << input.second
                        << (input.first[0] ? "_" : " ");
 

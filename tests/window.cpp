@@ -22,7 +22,7 @@ TEST_F(Window, 1) {
     | coll::window(1)
     | coll::foreach([&, i = 0](auto&& w) mutable {
         ++num_windows;
-        EXPECT_EQ(w.size(), 1);
+        EXPECT_EQ((int) w.size(), 1);
         EXPECT_EQ(w[0], Window::vals[i++]);
       });
   EXPECT_EQ(num_windows, 20);
@@ -35,7 +35,7 @@ TEST_F(Window, 5) {
     | coll::window(5)
     | coll::foreach([&, i = 0](auto&& w) mutable {
         ++num_windows;
-        EXPECT_EQ(w.size(), 5);
+        EXPECT_EQ((int) w.size(), 5);
         for (auto& x : w) {
           EXPECT_EQ(x, Window::vals[i++]);
         }
@@ -50,7 +50,7 @@ TEST_F(Window, 5_1) {
     | coll::window(5, 1)
     | coll::foreach([&, i = 0](auto&& w) mutable {
         ++num_windows;
-        EXPECT_EQ(w.size(), 5);
+        EXPECT_EQ((int) w.size(), 5);
         for (int j = 0; j < 5; j++) {
           EXPECT_EQ(w[j], Window::vals[i + j]);
         }
@@ -66,7 +66,7 @@ TEST_F(Window, 5_1_REF) {
     | coll::window(5, 1).cache_by_ref()
     | coll::foreach([&, i = 0](auto&& w) mutable {
         ++num_windows;
-        EXPECT_EQ(w.size(), 5);
+        EXPECT_EQ((int) w.size(), 5);
         for (int j = 0; j < 5; j++) {
           EXPECT_EQ(w[j], Window::vals[i + j]);
         }
@@ -85,7 +85,7 @@ TEST_F(Window, 5_4_REF) {
     | coll::foreach([&, i = 0](auto&& w) mutable {
         ++num_windows;
         auto n = i + 5 <= 20 ? 5 : 20 - i;
-        EXPECT_EQ(w.size(), n);
+        EXPECT_EQ((int) w.size(), n);
         for (int j = 0; j < n; j++) {
           EXPECT_EQ(w[j], Window::vals[i + j]);
         }
@@ -104,7 +104,7 @@ TEST_F(Window, 5_4_REF_REV) {
     | coll::reverse().with_buffer()
     | coll::foreach([&, n = (20 - 1) % 4 + 1, i = 20 - ((20 - 1) % 4 + 1)](auto&& w) mutable {
         ++num_windows;
-        EXPECT_EQ(w.size(), n);
+        EXPECT_EQ((int) w.size(), n);
         for (int j = 0; j < n; j++) {
           EXPECT_EQ(w[j], Window::vals[i + j]);
         }
@@ -124,7 +124,7 @@ TEST_F(Window, 5_4_VAL_REV) {
     | coll::reverse().with_buffer()
     | coll::foreach([&, n = (20 - 1) % 4 + 1, i = 20 - ((20 - 1) % 4 + 1)](auto&& w) mutable {
         ++num_windows;
-        EXPECT_EQ(w.size(), n);
+        EXPECT_EQ((int) w.size(), n);
         for (int j = 0; j < n; j++) {
           EXPECT_EQ(w[j], Window::vals[i + j]);
         }
@@ -142,7 +142,7 @@ TEST_F(Window, 5_6_REF_REV) {
     | coll::reverse().with_buffer()
     | coll::foreach([&, n = 20 % 6, i = 20 - (20 % 6)](auto&& w) mutable {
         ++num_windows;
-        EXPECT_EQ(w.size(), n);
+        EXPECT_EQ((int) w.size(), n);
         for (int j = 0; j < n; j++) {
           EXPECT_EQ(w[j], Window::vals[i + j]);
         }

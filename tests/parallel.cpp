@@ -24,7 +24,6 @@ GTEST_TEST(Parallel, Sum) {
 
 GTEST_TEST(Parallel, HeadSum) {
   int n = 4;
-  int es = (0 + 100 - 1) * 100 / 2;
   std::vector<int> ts(n, -1);
 
   int s = *(coll::range(100)
@@ -46,7 +45,7 @@ GTEST_TEST(Parallel, DoubleSum) {
   int es = (0 + 100 - 1) * 100 / 2;
 
   int s = *(coll::range(100)
-    | coll::parallel(n, [](size_t pid, auto in) {
+    | coll::parallel(n, [](size_t, auto in) {
         return in | coll::map(anony_cc(_ * 2));
       })
     | coll::sum());
@@ -59,7 +58,7 @@ GTEST_TEST(Parallel, DoubleSumFewInts) {
   int es = (0 + 3 - 1) * 3 / 2;
 
   int s = *(coll::range(3)
-    | coll::parallel(n, [](size_t pid, auto in) {
+    | coll::parallel(n, [](size_t, auto in) {
         return in | coll::map(anony_cc(_ * 2));
       })
     | coll::sum());
@@ -88,9 +87,9 @@ GTEST_TEST(Parallel, ParallelPartition) {
   int es = (0 + 100 - 1) * 100 / 2;
 
   int s = *(coll::range(100)
-    | coll::parallel(n, [](size_t pid, auto in) {
+    | coll::parallel(n, [](size_t, auto in) {
         return in
-          | coll::partition([](int key, auto in) {
+          | coll::partition([](int, auto in) {
               return in | coll::sum();
             })
             .by(anony_cc(_ % 8));
@@ -107,7 +106,7 @@ GTEST_TEST(Parallel, ParallelPartitionAlias) {
   int es = (0 + 100 - 1) * 100 / 2;
 
   int s = *(coll::range(100)
-    | coll::parallel_partition(n, [](int key, auto in) {
+    | coll::parallel_partition(n, [](int, auto in) {
         return in | coll::sum();
       })
       .key_by(anony_cc(_ % 8))

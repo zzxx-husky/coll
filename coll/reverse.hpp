@@ -84,8 +84,8 @@ struct Reverse {
 
     template<typename ... X>
     WithBuffer(const Args& args, X&& ... x):
-      args(args),
-      Child(std::forward<X>(x)...) {
+      Child(std::forward<X>(x)...),
+      args(args) {
       ctrl = Child::control().forward();
     }
 

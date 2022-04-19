@@ -11,6 +11,7 @@ struct TraversalChildBase {
   virtual void child_process(Input) = 0;
   virtual void child_end() = 0;
   virtual bool child_break_now() = 0;
+  virtual ~TraversalChildBase() = default;
 };
 
 template<typename Output, typename Ts>
@@ -107,18 +108,18 @@ struct Traversal {
 
     template<typename ... X>
     TraversalChild(std::unique_ptr<TraversalParentBase<Output, Ts>>&& parent, X&& ... x):
-      parent(std::move(parent)),
-      Child(std::forward<X>(x) ...) {
+      Child(std::forward<X>(x) ...),
+      parent(std::move(parent)) {
     }
 
     TraversalChild(const TraversalChild<Child>& t):
-      parent(t.parent->copy()),
-      Child(t) {
+      Child(t),
+      parent(t.parent->copy()) {
     }
 
     TraversalChild(TraversalChild<Child>&& t):
-      parent(std::move(t.parent)),
-      Child(std::move(static_cast<Child&>(t))) {
+      Child(std::move(static_cast<Child&>(t))),
+      parent(std::move(t.parent)) {
     }
 
     std::unique_ptr<TraversalParentBase<Output, Ts>> parent = nullptr;

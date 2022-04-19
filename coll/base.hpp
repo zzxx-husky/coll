@@ -107,7 +107,7 @@ struct ExecutionLike : public ExecutionBase /* or public ChildExecutionLike */ {
    * args are the arguments to initialize all the Execution classes, ordered from the source execution to the sink execution
    **/
   template<typename Exec, typename ... ArgT>
-  static decltype(auto) execute(ArgT&& ... args) {}
+  static decltype(auto) execute(ArgT&& ...) {}
 };
 
 namespace traits {

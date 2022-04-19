@@ -39,11 +39,12 @@ struct Partition {
   struct Execution : public Child {
     template<typename ... X>
     Execution(const Args& args, X&& ... x):
-      args(args),
-      Child(std::forward<X>(x)...) {
+      Child(std::forward<X>(x)...),
+      args(args) {
     }
 
-    static auto construct_partition_pipeline(Args& args, const KeyType& const_key, Child* child) {
+    static auto construct_partition_pipeline(
+      Args& args, const KeyType& const_key, [[maybe_unused]] Child* child) {
       if constexpr (IsPipeOperator) {
         return args.pipeline_builder(const_key, place_holder<InputType>())
           | foreach([child](auto&& e) {

@@ -8,7 +8,7 @@ GTEST_TEST(Iterate, Basic) {
     | coll::foreach([&](auto&& i) {
         EXPECT_EQ(++c, i);
       });
-  EXPECT_EQ(c, x.size());
+  EXPECT_EQ(c, (int) x.size());
 }
 
 GTEST_TEST(Iterate, String) {
@@ -18,7 +18,7 @@ GTEST_TEST(Iterate, String) {
     | coll::foreach([&](auto&& i) {
         EXPECT_EQ(++c + '0', i);
       });
-  EXPECT_EQ(c, str.size());
+  EXPECT_EQ(c, (int) str.size());
 }
 
 GTEST_TEST(Iterate, BoundedArray) {
@@ -38,7 +38,7 @@ GTEST_TEST(Iterate, PostIterate) {
       | coll::foreach([&](auto&& i) {
         EXPECT_EQ(++c, i);
       });
-  EXPECT_EQ(c, vec.size());
+  EXPECT_EQ(c, (int) vec.size());
 }
 
 GTEST_TEST(Iterate, Optional) {

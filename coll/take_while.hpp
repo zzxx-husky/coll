@@ -33,8 +33,8 @@ struct TakeWhile {
   struct Execution : public Child {
     template<typename ... X>
     Execution(const Args& args, X&& ... x):
-      args(args),
-      Child(std::forward<X>(x)...) {
+      Child(std::forward<X>(x)...),
+      args(args) {
     }
 
     Args args;

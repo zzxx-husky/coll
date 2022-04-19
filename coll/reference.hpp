@@ -30,7 +30,7 @@ public:
   }
 
   template<typename U,
-    std::enable_if_t<std::is_convertible<U*, T*>::value>* = nullptr>
+    typename std::enable_if_t<std::is_convertible<U*, T*>::value>* = nullptr>
   optional(U& v): ref(&v) {}
 
   inline optional<T&>& operator=(std::nullopt_t) noexcept {
