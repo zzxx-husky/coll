@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <utility>
+#include <unordered_map>
 
 #include "aggregate.hpp"
 #include "base.hpp"
